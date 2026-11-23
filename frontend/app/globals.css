@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+/*
+ * ScribeBox design tokens, from the ScribeBox design system (tokens.json).
+ * Raw values live on :root and swap for dark mode; @theme maps them to Tailwind utilities
+ * (bg-paper, text-ink, border-line-strong, bg-accent, text-review-ink, ...).
+ */
+:root {
+  color-scheme: light;
+  --paper: #f6f4ef;
+  --paper-raised: #ffffff;
+  --paper-sunk: #eeebe3;
+  --line: #e2ded4;
+  --line-strong: #87827a;
+  --ink: #1b1c20;
+  --ink-muted: #5c5a54;
+  --accent: #2d46c4;
+  --accent-hover: #22379f;
+  --accent-soft: #e7eafa;
+  --on-accent: #ffffff;
+  --review: #f7d760;
+  --review-soft: #fcefc0;
+  --review-ink: #5e3d00;
+  --success: #0b6877;
+  --success-soft: #dcf0f2;
+  --danger: #b2321b;
+  --danger-soft: #fbe5e0;
+  --on-danger: #ffffff;
+  --link: var(--accent);
+  --elev-card: 0 1px 2px #1b1c200d;
+  --elev-float: 0 6px 16px #1b1c2014, 0 18px 40px -8px #1b1c2026;
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #15161a;
+    --paper-raised: #1e1f24;
+    --paper-sunk: #0f1013;
+    --line: #2e3036;
+    --line-strong: #70737d;
+    --ink: #edebe5;
+    --ink-muted: #a6a39b;
+    --accent: #93a5ff;
+    --accent-hover: #b4c1ff;
+    --accent-soft: #1e2550;
+    --on-accent: #10131f;
+    --review: #e0b83a;
+    --review-soft: #3b3008;
+    --review-ink: #f3d067;
+    --success: #62cbd9;
+    --success-soft: #0d2d32;
+    --danger: #ff9178;
+    --danger-soft: #3b1810;
+    --on-danger: #1b0d09;
+    --elev-card: 0 1px 2px #00000066;
+    --elev-float: 0 18px 40px -8px #000000cc;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-review: var(--review);
+  --color-review-soft: var(--review-soft);
+  --color-review-ink: var(--review-ink);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-link: var(--link);
+
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "Cascadia Mono", Menlo, monospace;
+
+  --shadow-card: var(--elev-card);
+  --shadow-float: var(--elev-float);
+  --shadow-focus: var(--focus-ring);
+  --shadow-focus-danger: 0 0 0 2px var(--paper), 0 0 0 4px var(--danger);
+}
+
+@theme {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Type styles from the design system: text-display, text-title, ... */
+  --text-display: 30px;
+  --text-display--line-height: 36px;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.015em;
+  --text-title: 20px;
+  --text-title--line-height: 28px;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-heading: 16px;
+  --text-heading--line-height: 22px;
+  --text-heading--font-weight: 600;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
+  --text-label: 13px;
+  --text-label--line-height: 18px;
+  --text-label--font-weight: 550;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--letter-spacing: 0.01em;
+  --text-summary: 17px;
+  --text-summary--line-height: 28px;
+  --text-quote: 14px;
+  --text-quote--line-height: 22px;
+  --text-transcript: 13px;
+  --text-transcript--line-height: 22px;
+  --text-timestamp: 12px;
+  --text-timestamp--line-height: 16px;
+  --text-timestamp--font-weight: 500;
+
+  --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+}
+
+@layer base {
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 22px;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--review-soft);
+    color: var(--ink);
+  }
+}
+
+/* Keyboard focus on every control: a 2px paper gap, then 2px of solid accent. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
