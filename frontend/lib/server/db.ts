@@ -3,16 +3,18 @@ import "server-only";
 import { Pool, type QueryResultRow } from "pg";
 import { poolConfig } from "./db-config.mjs";
 
-// Reuse one pool across hot reloads in development instead of opening new connections each time.
-const globalForDb = globalThis as unknown as { scribeboxPool?: Pool };
+// Keep one connection pool so we don't open new connections on every hot reload
+const globalForDb = globalThis as unknown as { pool?: Pool };
 
-function getPool(): Pool {
-  globalForDb.scribeboxPool ??= new Pool(poolConfig());
-  return globalForDb.scribeboxPool;
+function getPool() {
+  if (!globalForDb.pool) {
+    globalForDb.pool = new Pool(poolConfig());
+  }
+  return globalForDb.pool;
 }
 
-/** Runs a parameterised query. Always pass values through `params`, never by building the SQL string. */
-export async function query<T extends QueryResultRow>(text: string, params: unknown[] = []): Promise<T[]> {
-  const result = await getPool().query<T>(text, params);
+// Runs a query and returns the rows. Always pass values in params (never put them in the SQL string)
+export async function query<T extends QueryResultRow = QueryResultRow>(sql: string, params: unknown[] = []) {
+  const result = await getPool().query<T>(sql, params);
   return result.rows;
 }

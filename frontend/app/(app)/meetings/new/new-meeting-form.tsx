@@ -93,11 +93,6 @@ export function NewMeetingForm({ today }: { today: string }) {
         readOnly={Boolean(file)}
         onChange={(event) => setTranscript(event.target.value)}
         placeholder={"Lerato: Morning everyone. Two things today…\nSipho: Engineering can’t hit the 25th."}
-        hint={
-          file
-            ? "Showing the contents of " + file.name + ". It’s stored exactly as uploaded. Remove the file to paste text instead."
-            : "Speaker names help the AI attribute action items. Timestamps are kept if you include them."
-        }
         error={errors.transcript}
       />
 

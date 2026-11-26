@@ -4,55 +4,55 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { query } from "./db";
 import { ApiError } from "./http";
 
-/*
- * Firebase signs ID tokens with Google's public keys, so we can verify them with `jose` and the
- * project ID alone. No service-account secret is needed.
- * https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
- */
-const FIREBASE_KEYS = createRemoteJWKSet(
+// Google's public keys, used to check that a Firebase token is real
+const googleKeys = createRemoteJWKSet(
   new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"),
 );
 
-export type AuthUser = { id: string; email: string; name: string | null; createdAt: string };
+export type User = {
+  id: string;
+  email: string;
+  name: string | null;
+  created_at: Date;
+};
 
-type UserRow = { id: string; email: string; name: string | null; created_at: Date };
-
-const unauthorized = () => new ApiError(401, "unauthorized", "Sign in to continue.");
-
-/**
- * Verifies the `Authorization: Bearer <Firebase ID token>` header and returns the user,
- * creating their database row on first sight so every meeting has an owner to point at.
- */
-export async function requireUser(request: Request): Promise<AuthUser> {
-  const header = request.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) throw unauthorized();
+// Gets the logged in user from the request's token
+export async function getUser(request: Request): Promise<User> {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    throw new ApiError(401, "Not logged in");
+  }
+  const token = authHeader.replace("Bearer ", "");
 
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (!projectId) throw new Error("NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set.");
-
-  let claims;
-  try {
-    ({ payload: claims } = await jwtVerify(token, FIREBASE_KEYS, {
-      issuer: `https://securetoken.google.com/${projectId}`,
-      audience: projectId,
-      algorithms: ["RS256"],
-    }));
-  } catch {
-    throw unauthorized();
+  if (!projectId) {
+    throw new Error("Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID in .env");
   }
 
-  const uid = claims.sub;
-  const email = typeof claims.email === "string" ? claims.email : null;
-  if (!uid || !email) throw unauthorized();
-  const name = typeof claims.name === "string" ? claims.name : null;
+  let payload;
+  try {
+    const result = await jwtVerify(token, googleKeys, {
+      issuer: "https://securetoken.google.com/" + projectId,
+      audience: projectId,
+    });
+    payload = result.payload;
+  } catch {
+    throw new ApiError(401, "Invalid or expired token");
+  }
 
-  const [row] = await query<UserRow>(
+  const id = payload.sub;
+  const email = typeof payload.email === "string" ? payload.email : null;
+  const name = typeof payload.name === "string" ? payload.name : null;
+  if (!id || !email) {
+    throw new ApiError(401, "Invalid token");
+  }
+
+  // Save the user in the database (or update them if they already exist)
+  const rows = await query<User>(
     `insert into users (id, email, name) values ($1, $2, $3)
-     on conflict (id) do update
-       set email = excluded.email, name = coalesce(excluded.name, users.name)
+     on conflict (id) do update set email = excluded.email, name = coalesce(excluded.name, users.name)
      returning id, email, name, created_at`,
-    [uid, email, name],
+    [id, email, name],
   );
-  return { id: row.id, email: row.email, name: row.name, createdAt: row.created_at.toISOString() };
+  return rows[0];
 }
