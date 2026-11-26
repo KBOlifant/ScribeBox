@@ -12,14 +12,14 @@ export function Select({ className, controlSize = "sm", children, ...rest }: Sel
     <span className={cn("relative inline-flex", className)}>
       <select
         className={cn(
-          "w-full cursor-pointer appearance-none rounded-md border border-line-strong bg-paper-raised pl-3 pr-8 text-ink focus-ring",
-          controlSize === "sm" ? "h-8 text-label max-sm:h-10" : "h-10 text-body",
+          "w-full cursor-pointer appearance-none rounded-md bg-paper-raised pl-3.5 pr-9 text-ink shadow-1 transition-shadow duration-150 ease-out hover:shadow-2 focus-ring",
+          controlSize === "sm" ? "h-9 text-label max-sm:h-11" : "h-11 text-body",
         )}
         {...rest}
       >
         {children}
       </select>
-      <Icon name="chevronDown" size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted" />
+      <Icon name="chevronDown" size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted" />
     </span>
   );
 }

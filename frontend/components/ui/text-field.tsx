@@ -16,12 +16,12 @@ type FieldProps = {
 };
 
 const CONTROL =
-  "w-full rounded-md border bg-paper-raised px-3 py-2 text-body text-ink placeholder:text-ink-muted transition-colors duration-120 ease-out focus:outline-hidden read-only:bg-paper-sunk";
+  "w-full rounded-md px-3.5 py-2.5 text-body text-ink placeholder:text-ink-muted transition-[background-color,box-shadow] duration-150 ease-out focus:outline-hidden read-only:opacity-80";
 
 function controlState(error?: string): string {
   return error
-    ? "border-danger focus:shadow-focus-danger"
-    : "border-line-strong hover:border-ink-muted focus:border-accent focus:shadow-focus";
+    ? "bg-danger-soft shadow-[inset_0_0_0_1.5px_var(--danger)] focus:bg-paper-raised focus:shadow-focus-danger"
+    : "bg-paper-sunk shadow-inset hover:bg-paper-raised hover:shadow-[var(--elev-inset),0_0_0_1px_var(--line)] focus:bg-paper-raised focus:shadow-focus";
 }
 
 function describedBy(id: string, error?: string, hint?: ReactNode): string | undefined {
@@ -43,7 +43,7 @@ function FieldFrame({ id, label, hint, error, optional, className, children }: F
           <span>{error}</span>
         </p>
       ) : hint ? (
-        <p id={id + "-hint"} className="text-caption text-ink-muted">
+        <p id={id + "-hint"} className="text-label font-normal text-ink-muted">
           {hint}
         </p>
       ) : null}
@@ -62,7 +62,7 @@ export function TextField({ label, hint, error, optional, className, id, ...rest
         id={fieldId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(fieldId, error, hint)}
-        className={cn(CONTROL, "min-h-10", controlState(error))}
+        className={cn(CONTROL, "min-h-11", controlState(error))}
         {...rest}
       />
     </FieldFrame>

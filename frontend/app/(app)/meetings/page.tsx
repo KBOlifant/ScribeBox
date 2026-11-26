@@ -36,7 +36,7 @@ export default function MeetingsPage() {
           Paste a transcript or upload a .txt, .vtt or .md file. You get a summary, decisions and action items.
         </EmptyState>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-line bg-paper-raised">
+        <div className="flex flex-col gap-3">
           {list.map((meeting) => {
             const items = actionItems.filter((item) => item.meetingId === meeting.id);
             return (

@@ -30,7 +30,7 @@ type FilterBarProps = {
 export function FilterBar({ status, onStatusChange, owners, owner, onOwnerChange, overdueOnly, onOverdueChange, counts }: FilterBarProps) {
   return (
     <div role="group" aria-label="Filter action items" className="flex flex-wrap items-center gap-3">
-      <div role="group" aria-label="Status" className="inline-flex flex-wrap gap-0.5 rounded-md bg-paper-sunk p-[3px]">
+      <div role="group" aria-label="Status" className="inline-flex flex-wrap gap-1 rounded-lg bg-paper-sunk p-1 shadow-inset">
         {STATUS_FILTERS.map(([value, label]) => {
           const on = status === value;
           return (
@@ -40,12 +40,12 @@ export function FilterBar({ status, onStatusChange, owners, owner, onOwnerChange
               aria-pressed={on}
               onClick={() => onStatusChange(value)}
               className={cn(
-                "inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3 text-label transition-colors duration-120 ease-out focus-ring max-sm:h-9",
-                on ? "bg-paper-raised text-accent shadow-[inset_0_0_0_1px_var(--accent)]" : "text-ink-muted hover:text-ink",
+                "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-3.5 text-label transition-[background-color,box-shadow,color] duration-150 ease-out focus-ring max-sm:h-11",
+                on ? "bg-paper-raised text-accent shadow-1" : "text-ink-muted hover:bg-paper-raised/60 hover:text-ink",
               )}
             >
               {label}
-              {counts?.[value] != null && <span className="font-normal tabular-nums">{counts[value]}</span>}
+              {counts?.[value] != null && <span className={cn("font-semibold tabular-nums", on ? "text-lilac-ink" : "text-ink-muted")}>{counts[value]}</span>}
             </button>
           );
         })}
@@ -64,13 +64,13 @@ export function FilterBar({ status, onStatusChange, owners, owner, onOwnerChange
         aria-pressed={overdueOnly}
         onClick={() => onOverdueChange(!overdueOnly)}
         className={cn(
-          "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-label transition-colors duration-120 ease-out focus-ring max-sm:h-10",
-          overdueOnly ? "border-danger bg-danger-soft text-danger" : "border-line-strong bg-paper-raised text-ink hover:bg-paper-sunk",
+          "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-3.5 text-label transition-[background-color,box-shadow,color] duration-150 ease-out focus-ring max-sm:h-11",
+          overdueOnly ? "bg-danger-soft text-danger shadow-[inset_0_0_0_1.5px_var(--danger)]" : "bg-paper-raised text-ink shadow-1 hover:shadow-2",
         )}
       >
-        <Icon name="clock" size={14} />
+        <Icon name="clock" size={16} />
         Overdue
-        {counts?.overdue != null && <span className="font-normal tabular-nums">{counts.overdue}</span>}
+        {counts?.overdue != null && <span className="font-semibold tabular-nums">{counts.overdue}</span>}
       </button>
     </div>
   );

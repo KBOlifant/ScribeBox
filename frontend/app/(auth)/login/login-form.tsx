@@ -6,9 +6,10 @@ import { useState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
-import { wait } from "@/lib/mock";
-import { currentUser } from "@/lib/mock-data";
-import { emailError, focusFirstInvalid, hasErrors, PASSWORD_MIN, type FieldErrors } from "@/lib/validation";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/app/configs/firebaseconfig";
+import { authErrorMessage } from "@/lib/auth-errors";
+import { emailError, focusFirstInvalid, hasErrors, type FieldErrors } from "@/lib/validation";
 
 export function LoginForm() {
   const router = useRouter();
@@ -34,14 +35,13 @@ export function LoginForm() {
     }
 
     setSubmitting(true);
-    await wait(900);
-    // Mock check. The real API answers with one generic message so it never reveals which field was wrong.
-    if (email.toLowerCase() !== currentUser.email || password.length < PASSWORD_MIN) {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/meetings");
+    } catch (error) {
       setSubmitting(false);
-      setFormError("That email or password is incorrect.");
-      return;
+      setFormError(authErrorMessage(error));
     }
-    router.push("/meetings");
   }
 
   return (
@@ -62,15 +62,11 @@ export function LoginForm() {
           Log in
         </Button>
       </form>
-      <p className="text-center text-sm text-ink-muted">
+      <p className="text-center text-label font-normal text-ink-muted">
         New to ScribeBox?{" "}
         <Link href="/register" className="rounded-sm font-[550] text-link underline underline-offset-2 focus-ring">
           Create an account
         </Link>
-      </p>
-      <p className="rounded-md bg-paper-sunk px-3 py-2 text-caption text-ink-muted">
-        Mock data: log in as <span className="font-mono">{currentUser.email}</span> with any password of {PASSWORD_MIN} or more
-        characters.
       </p>
     </div>
   );

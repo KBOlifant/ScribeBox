@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# design-check output from the taste skill (screenshots, Chrome profile)
+.taste-skill/

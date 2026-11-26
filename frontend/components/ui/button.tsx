@@ -3,20 +3,23 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon, type IconName } from "./icon";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "chrome";
 export type ButtonSize = "md" | "sm";
 
+// No borders: primary and danger are filled with a coloured shadow, secondary is a raised surface,
+// ghost is flat until hovered, chrome sits on the dark header bar.
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "border-accent bg-accent text-on-accent hover:not-disabled:border-accent-hover hover:not-disabled:bg-accent-hover",
-  secondary: "border-line-strong bg-paper-raised text-ink hover:not-disabled:bg-paper-sunk",
-  ghost: "border-transparent bg-transparent text-accent hover:not-disabled:bg-accent-soft",
-  danger: "border-danger bg-danger text-on-danger hover:not-disabled:shadow-[inset_0_0_0_40px_#0000001f]",
+  primary: "bg-accent text-on-accent shadow-accent hover:not-disabled:bg-accent-hover",
+  secondary: "bg-paper-raised text-ink shadow-1 hover:not-disabled:shadow-2",
+  ghost: "bg-transparent text-accent hover:not-disabled:bg-accent-soft",
+  danger: "bg-danger text-on-danger shadow-1 hover:not-disabled:shadow-[inset_0_0_0_40px_#0000001f,var(--elev-2)]",
+  chrome: "bg-transparent text-on-chrome-muted hover:not-disabled:bg-chrome-raised hover:not-disabled:text-on-chrome",
 };
 
 function sizeClasses(size: ButtonSize, variant: ButtonVariant, iconOnly: boolean): string {
-  if (size === "md") return iconOnly ? "size-10" : "h-10 px-4 text-sm";
-  if (iconOnly) return "size-8 max-sm:size-10";
-  return cn("h-8 text-[13px] max-sm:h-10", variant === "ghost" ? "px-2" : "px-3");
+  if (size === "md") return iconOnly ? "size-11" : "h-11 px-5 text-[15px]";
+  if (iconOnly) return "size-9 max-sm:size-11";
+  return cn("h-9 text-label max-sm:h-11", variant === "ghost" || variant === "chrome" ? "px-2.5" : "px-3.5");
 }
 
 export function buttonClasses(options: {
@@ -28,8 +31,9 @@ export function buttonClasses(options: {
 }): string {
   const { variant = "secondary", size = "md", loading = false, iconOnly = false, className } = options;
   return cn(
-    "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border font-[550] leading-5",
-    "transition-colors duration-120 ease-out focus-ring disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-[550] leading-5",
+    "transition-[background-color,box-shadow,color,transform] duration-150 ease-out focus-ring active:not-disabled:translate-y-px active:not-disabled:scale-[0.98]",
+    "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
     VARIANTS[variant],
     sizeClasses(size, variant, iconOnly),
     loading && "disabled:cursor-progress disabled:opacity-100",

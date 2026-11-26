@@ -43,13 +43,13 @@ export function TranscriptDrop({
   if (file) {
     return (
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3 rounded-lg border border-line-strong bg-paper-raised px-4 py-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-accent-soft text-accent">
-            <Icon name="file" size={20} />
+        <div className="surface flex items-center gap-4 px-5 py-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-md bg-lilac-soft text-lilac-ink">
+            <Icon name="file" size={22} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold">{file.name}</p>
-            <p className="text-caption text-ink-muted">{[formatBytes(file.size), file.meta].filter(Boolean).join(" · ")}</p>
+            <p className="text-label font-normal text-ink-muted">{[formatBytes(file.size), file.meta].filter(Boolean).join(" · ")}</p>
           </div>
           {onClear && (
             <Button variant="ghost" size="sm" onClick={onClear} aria-label={"Remove " + file.name}>
@@ -76,13 +76,13 @@ export function TranscriptDrop({
           take(event.dataTransfer.files);
         }}
         className={cn(
-          "relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-[1.5px] bg-paper-raised px-6 py-8 text-center",
-          "transition-colors duration-120 ease-out focus-within:border-accent focus-within:shadow-focus",
+          "relative flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] px-6 py-10 text-center",
+          "transition-[background-color,border-color,box-shadow] duration-150 ease-out focus-within:border-accent focus-within:shadow-focus",
           dragging
-            ? "border-solid border-accent bg-accent-soft"
+            ? "border-solid border-accent bg-accent-soft shadow-2"
             : error
-              ? "border-dashed border-danger"
-              : "border-dashed border-line-strong hover:border-accent",
+              ? "border-dashed border-danger bg-danger-soft"
+              : "border-dashed border-lilac bg-lilac-soft/50 hover:border-accent hover:bg-accent-soft/60",
         )}
       >
         <input
@@ -96,8 +96,8 @@ export function TranscriptDrop({
             event.target.value = "";
           }}
         />
-        <span className="mb-2 grid size-10 place-items-center rounded-md bg-accent-soft text-accent">
-          <Icon name="upload" size={20} />
+        <span className="mb-2 grid size-12 place-items-center rounded-full bg-paper-raised text-accent shadow-1">
+          <Icon name="upload" size={22} />
         </span>
         <span className="font-semibold text-ink">
           {dragging ? (
@@ -109,7 +109,7 @@ export function TranscriptDrop({
             </>
           )}
         </span>
-        <span className="text-caption text-ink-muted">{hint}</span>
+        <span className="text-label font-normal text-ink-muted">{hint}</span>
       </label>
       {errorText}
     </div>

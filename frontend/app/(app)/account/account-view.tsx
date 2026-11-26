@@ -1,16 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { EmailAuthProvider, deleteUser, reauthenticateWithCredential } from "firebase/auth";
 import { useState, type FormEvent } from "react";
+import { useAuth } from "@/components/auth-provider";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { formatLongDate } from "@/lib/format";
-import { wait } from "@/lib/mock";
-import type { User } from "@/lib/types";
+import { authErrorMessage } from "@/lib/auth-errors";
 
-export function AccountView({ user }: { user: User }) {
+export function AccountView() {
   const router = useRouter();
+  const { user } = useAuth();
   const [confirming, setConfirming] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string>();
@@ -23,36 +25,48 @@ export function AccountView({ user }: { user: User }) {
       setError("Enter your password to confirm.");
       return;
     }
+    if (!user) return;
     setError(undefined);
     setDeleting(true);
-    await wait(1000);
-    router.push("/login");
+    try {
+      // Firebase requires a recent sign-in before deleting, so confirm with the password first.
+      await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? "", password));
+      await deleteUser(user);
+      router.push("/login");
+    } catch (error) {
+      setDeleting(false);
+      setError(authErrorMessage(error));
+    }
   }
+
+  // The (app) layout gate keeps this hidden until a user is signed in.
+  if (!user) return null;
+  const memberSince = user.metadata.creationTime ? new Date(user.metadata.creationTime).toISOString().slice(0, 10) : undefined;
 
   return (
     <div className="flex flex-col gap-8">
-      <section aria-labelledby="profile" className="rounded-lg border border-line bg-paper-raised p-4 sm:p-6">
+      <section aria-labelledby="profile" className="surface p-5 sm:p-7">
         <h2 id="profile" className="text-title">
           Profile
         </h2>
-        <dl className="mt-4 grid gap-4 sm:grid-cols-3">
+        <dl className="mt-5 grid gap-5 sm:grid-cols-3">
           <div>
-            <dt className="text-caption text-ink-muted">Name</dt>
-            <dd className="mt-1">{user.name}</dd>
+            <dt className="text-label font-normal text-ink-muted">Name</dt>
+            <dd className="mt-1">{user.displayName ?? "—"}</dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-caption text-ink-muted">Email</dt>
+            <dt className="text-label font-normal text-ink-muted">Email</dt>
             <dd className="mt-1 truncate">{user.email}</dd>
           </div>
           <div>
-            <dt className="text-caption text-ink-muted">Member since</dt>
-            <dd className="mt-1">{formatLongDate(user.memberSince)}</dd>
+            <dt className="text-label font-normal text-ink-muted">Member since</dt>
+            <dd className="mt-1">{memberSince ? formatLongDate(memberSince) : "—"}</dd>
           </div>
         </dl>
       </section>
 
-      <section aria-labelledby="delete-account" className="rounded-lg border border-danger bg-paper-raised p-4 sm:p-6">
-        <h2 id="delete-account" className="text-title">
+      <section aria-labelledby="delete-account" className="surface p-5 sm:p-7">
+        <h2 id="delete-account" className="text-title text-danger">
           Delete account
         </h2>
         <p className="mt-2 max-w-[560px] text-ink-muted">

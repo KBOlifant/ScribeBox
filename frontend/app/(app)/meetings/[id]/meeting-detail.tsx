@@ -70,7 +70,7 @@ export function MeetingDetail({ meeting, initialItems, today }: Props) {
           <DecisionsSection decisions={decisions} onSave={setDecisions} />
         </>
       ) : (
-        <p className="rounded-lg border border-line bg-paper-raised p-6 text-ink-muted">
+        <p className="surface p-6 text-ink-muted">
           The summary and decisions appear here once the analysis succeeds. Your transcript is saved below, and you can add
           action items by hand in the meantime.
         </p>
@@ -88,7 +88,7 @@ function ResultsSkeleton() {
     <div aria-hidden="true" className="flex flex-col gap-10">
       <div className="flex flex-col gap-4">
         <p className="text-title text-ink-muted">Summary</p>
-        <div className="flex flex-col gap-3 rounded-lg border border-line bg-paper-raised p-6">
+        <div className="surface flex flex-col gap-3 p-6">
           <Skeleton className="h-3.5 w-full" />
           <Skeleton className="h-3.5 w-11/12" />
           <Skeleton className="h-3.5 w-4/5" />
@@ -97,7 +97,7 @@ function ResultsSkeleton() {
       </div>
       <div className="flex flex-col gap-4">
         <p className="text-title text-ink-muted">Decisions</p>
-        <div className="flex flex-col gap-3 rounded-lg border border-line bg-paper-raised p-6">
+        <div className="surface flex flex-col gap-3 p-6">
           <Skeleton className="h-3.5 w-3/4" />
           <Skeleton className="h-3.5 w-1/2" />
         </div>
@@ -142,7 +142,7 @@ function SummarySection({ summary, onSave }: { summary: string; onSave: (value: 
         )
       }
     >
-      <div className="rounded-lg border border-line bg-paper-raised p-4 sm:p-6">
+      <div className="surface p-5 sm:p-7">
         {editing ? (
           <div className="flex flex-col gap-4">
             <TextAreaField label="Summary" variant="prose" rows={6} value={draft} onChange={(event) => setDraft(event.target.value)} error={error} />
@@ -164,7 +164,7 @@ function SummarySection({ summary, onSave }: { summary: string; onSave: (value: 
         ) : (
           <>
             <p className="font-serif text-summary text-pretty">{summary}</p>
-            <p className="mt-4 text-caption text-ink-muted">{edited ? "Edited by you." : "Drafted by the AI from the transcript. Edit anything it got wrong."}</p>
+            <p className="mt-5 text-label font-normal text-lilac-ink">{edited ? "Edited by you." : "Drafted by the AI from the transcript. Edit anything it got wrong."}</p>
           </>
         )}
       </div>
@@ -203,7 +203,7 @@ function DecisionsSection({ decisions, onSave }: { decisions: string[]; onSave: 
       }
     >
       {editing ? (
-        <div className="flex flex-col gap-4 rounded-lg border border-line bg-paper-raised p-4 sm:p-6">
+        <div className="surface flex flex-col gap-4 p-5 sm:p-7">
           {draft.map((decision, index) => (
             <div key={index} className="flex items-end gap-2">
               <TextField
@@ -225,7 +225,7 @@ function DecisionsSection({ decisions, onSave }: { decisions: string[]; onSave: 
               Add another
             </Button>
           </div>
-          <div className="flex gap-3 border-t border-line pt-4">
+          <div className="flex gap-3 pt-2">
             <Button variant="primary" onClick={save}>
               Save decisions
             </Button>
@@ -235,16 +235,16 @@ function DecisionsSection({ decisions, onSave }: { decisions: string[]; onSave: 
           </div>
         </div>
       ) : decisions.length ? (
-        <ol className="divide-y divide-line rounded-lg border border-line bg-paper-raised">
+        <ol className="surface flex flex-col py-2">
           {decisions.map((decision, index) => (
-            <li key={index} className="flex gap-4 px-4 py-4 sm:px-6">
-              <span className="pt-1.5 font-mono text-timestamp text-ink-muted">{String(index + 1).padStart(2, "0")}</span>
+            <li key={index} className="flex gap-4 px-5 py-4 sm:px-7 divide-y">
+              <span className="pt-1.5 font-mono text-timestamp text-lilac-ink">{String(index + 1).padStart(2, "0")}</span>
               <p className="font-serif text-summary">{decision}</p>
             </li>
           ))}
         </ol>
       ) : (
-        <p className="rounded-lg border border-line bg-paper-raised px-4 py-4 text-ink-muted sm:px-6">No decisions were recorded in this meeting.</p>
+        <p className="surface px-5 py-5 text-ink-muted sm:px-7">No decisions were recorded in this meeting.</p>
       )}
     </Section>
   );
@@ -331,7 +331,7 @@ function ActionItemsSection({ items, onChange, today, meetingId, analysing, anal
       {analysing && items.length === 0 ? (
         <div aria-hidden="true" className="flex flex-col gap-3">
           {[0, 1].map((n) => (
-            <div key={n} className="flex gap-3 rounded-lg border border-line bg-paper-raised p-4">
+            <div key={n} className="surface flex gap-3 p-4">
               <Skeleton className="size-5" />
               <div className="flex flex-1 flex-col gap-2">
                 <Skeleton className="h-4 w-2/3" />
@@ -401,7 +401,7 @@ function ActionItemEditor({ initial, onSave, onCancel }: { initial: ActionItem |
   }
 
   return (
-    <form noValidate onSubmit={submit} className="flex flex-col gap-4 rounded-lg border border-accent bg-paper-raised p-4 shadow-card">
+    <form noValidate onSubmit={submit} className="surface flex flex-col gap-4 p-5 shadow-[var(--elev-2),0_0_0_2px_var(--accent)]">
       <p className="text-heading">{initial ? "Edit action item" : "New action item"}</p>
       <TextField label="What needs doing" value={text} onChange={(event) => setText(event.target.value)} error={errors.text} />
       <div className="grid gap-4 sm:grid-cols-3">
@@ -441,14 +441,14 @@ function TranscriptSection({ transcript }: { transcript: string }) {
   const lines = transcript.split("\n").length;
   return (
     <Section id="transcript" title="Transcript">
-      <details className="group rounded-lg border border-line bg-paper-raised">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3 text-label focus-ring [&::-webkit-details-marker]:hidden">
+      <details className="group surface">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-5 py-4 text-label focus-ring [&::-webkit-details-marker]:hidden">
           <span>
             Original transcript <span className="font-normal text-ink-muted">· {plural(lines, "line")} · stored exactly as uploaded</span>
           </span>
           <Icon name="chevronDown" className="text-ink-muted transition-transform duration-120 group-open:rotate-180" />
         </summary>
-        <pre className="max-h-[480px] overflow-auto rounded-b-lg border-t border-line bg-paper-sunk p-4 font-mono text-transcript whitespace-pre-wrap text-ink">
+        <pre className="max-h-[480px] overflow-auto rounded-b-lg bg-paper-sunk p-5 font-mono shadow-inset text-transcript whitespace-pre-wrap text-ink">
           {transcript}
         </pre>
       </details>

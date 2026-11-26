@@ -1,0 +1,104 @@
+### ScribeBox API, for the VS Code "REST Client" extension (humao.rest-client).
+### Click "Send Request" above any request. Run them top to bottom the first time.
+###
+### Values in {{$dotenv ...}} come from frontend/.env, so no secrets live in this file.
+### Add a Firebase test account there:
+###   TEST_USER_EMAIL=you+test@example.com
+###   TEST_USER_PASSWORD=a-long-test-password
+
+@baseUrl = http://localhost:3000
+@firebaseKey = {{$dotenv NEXT_PUBLIC_FIREBASE_API_KEY}}
+@token = {{login.response.body.idToken}}
+@meetingId = {{createMeeting.response.body.meeting.id}}
+
+
+############################## AUTH ##############################
+
+### 0. (Once only) Create the test account in Firebase. Skip if it already exists.
+POST https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={{firebaseKey}}
+Content-Type: application/json
+
+{
+  "email": "{{$dotenv TEST_USER_EMAIL}}",
+  "password": "{{$dotenv TEST_USER_PASSWORD}}",
+  "returnSecureToken": true
+}
+
+### 1. Sign in with Firebase. Every request below reuses the idToken from this response (valid 1 hour).
+# @name login
+POST https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebaseKey}}
+Content-Type: application/json
+
+{
+  "email": "{{$dotenv TEST_USER_EMAIL}}",
+  "password": "{{$dotenv TEST_USER_PASSWORD}}",
+  "returnSecureToken": true
+}
+
+### 2. Who am I? Creates the user's database row on first call. Expect 200.
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### 3. No token. Expect 401.
+GET {{baseUrl}}/api/auth/me
+
+
+############################## MEETINGS ##############################
+
+### 4. Create a meeting. Expect 201.
+# @name createMeeting
+POST {{baseUrl}}/api/meetings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Weekly product sync",
+  "date": "2026-11-24",
+  "sourceName": "weekly-sync.txt",
+  "transcript": "[00:00] Ana: Morning all.\n[00:12] Ben: I'll send the pricing deck by Friday.\n[00:40] Ana: Great, let's ship the beta next week."
+}
+
+### 5. Create with bad input. Expect 422 with a message per field.
+POST {{baseUrl}}/api/meetings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "date": "2026-02-30",
+  "transcript": "   "
+}
+
+### 6. List my meetings (no transcripts). Expect 200.
+GET {{baseUrl}}/api/meetings
+Authorization: Bearer {{token}}
+
+### 7. Get the meeting from step 4, with its transcript. Expect 200.
+GET {{baseUrl}}/api/meetings/{{meetingId}}
+Authorization: Bearer {{token}}
+
+### 8. Rename it. Expect 200.
+PATCH {{baseUrl}}/api/meetings/{{meetingId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Weekly product sync (renamed)"
+}
+
+### 9. Try to change the transcript. Expect 422.
+PATCH {{baseUrl}}/api/meetings/{{meetingId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "transcript": "edited"
+}
+
+### 10. Delete it. Expect 204.
+DELETE {{baseUrl}}/api/meetings/{{meetingId}}
+Authorization: Bearer {{token}}
+
+### 11. Get it again. Expect 404.
+GET {{baseUrl}}/api/meetings/{{meetingId}}
+Authorization: Bearer {{token}}

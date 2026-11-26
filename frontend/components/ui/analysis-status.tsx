@@ -31,11 +31,11 @@ const COPY: Record<Exclude<AnalysisState, "done">, { title: string; body: string
 };
 
 const BOX: Record<Exclude<AnalysisState, "done">, string> = {
-  queued: "border-line bg-paper-raised",
-  working: "border-transparent bg-accent-soft",
-  failed: "border-transparent bg-danger-soft",
-  invalid: "border-transparent bg-danger-soft",
-  rate_limited: "border-transparent bg-paper-sunk",
+  queued: "surface",
+  working: "bg-accent-soft",
+  failed: "bg-danger-soft",
+  invalid: "bg-danger-soft",
+  rate_limited: "bg-lilac-soft",
 };
 
 const ICON_COLOR: Record<Exclude<AnalysisState, "done">, string> = {
@@ -43,7 +43,7 @@ const ICON_COLOR: Record<Exclude<AnalysisState, "done">, string> = {
   working: "text-accent",
   failed: "text-danger",
   invalid: "text-danger",
-  rate_limited: "text-ink",
+  rate_limited: "text-lilac-ink",
 };
 
 type AnalysisStatusProps = {
@@ -61,8 +61,8 @@ type AnalysisStatusProps = {
 export function AnalysisStatus({ state, detail, meta, onRetry, retrying, className }: AnalysisStatusProps) {
   if (state === "done") {
     return (
-      <div role="status" className={cn("flex items-center gap-3 rounded-lg border border-line bg-paper-raised py-2 pr-2 pl-4", className)}>
-        <Icon name="done" size={18} className="text-success" />
+      <div role="status" className={cn("surface flex items-center gap-3 py-2.5 pr-2.5 pl-5", className)}>
+        <Icon name="done" size={20} className="text-success" />
         <p className="min-w-0 flex-1 text-label font-normal text-ink-muted">{detail ?? "Analysis complete"}</p>
         {onRetry && (
           <Button variant="ghost" size="sm" icon="refresh" loading={retrying} onClick={onRetry}>
@@ -75,7 +75,7 @@ export function AnalysisStatus({ state, detail, meta, onRetry, retrying, classNa
 
   const copy = COPY[state];
   return (
-    <div role="status" aria-live="polite" className={cn("flex flex-wrap items-start gap-3 rounded-lg border p-4", BOX[state], className)}>
+    <div role="status" aria-live="polite" className={cn("flex flex-wrap items-start gap-3 rounded-lg p-5", BOX[state], className)}>
       <span className={cn("mt-px flex w-5 shrink-0 justify-center", ICON_COLOR[state])}>
         {copy.icon ? (
           <Icon name={copy.icon} size={20} />
@@ -85,8 +85,8 @@ export function AnalysisStatus({ state, detail, meta, onRetry, retrying, classNa
       </span>
       <div className="min-w-0 flex-[1_1_260px]">
         <p className="font-semibold">{copy.title}</p>
-        <p className="mt-0.5 text-sm leading-5 text-ink-muted">{detail ?? copy.body}</p>
-        {meta && <p className="mt-2 text-caption text-ink-muted">{meta}</p>}
+        <p className="mt-0.5 text-[15px] leading-6 text-ink-muted">{detail ?? copy.body}</p>
+        {meta && <p className="mt-2 text-label font-normal text-ink-muted">{meta}</p>}
       </div>
       {copy.retry && onRetry && (
         <div className="ml-auto shrink-0">

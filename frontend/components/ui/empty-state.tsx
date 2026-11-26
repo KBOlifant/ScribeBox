@@ -13,13 +13,13 @@ type EmptyStateProps = {
 /** Why a list is empty, and the next step. */
 export function EmptyState({ title, children, icon = "inbox", action, className }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center gap-1 rounded-lg border-[1.5px] border-dashed border-line-strong px-6 py-12 text-center text-ink-muted", className)}>
-      <span className="mb-2 grid size-11 place-items-center rounded-full bg-paper-sunk">
-        <Icon name={icon} size={20} />
+    <div className={cn("surface flex flex-col items-center gap-1.5 px-6 py-14 text-center text-ink-muted", className)}>
+      <span className="mb-3 grid size-14 place-items-center rounded-full bg-lilac-soft text-lilac-ink">
+        <Icon name={icon} size={24} />
       </span>
       <p className="text-heading text-ink">{title}</p>
-      {children && <p className="max-w-[380px] text-sm leading-5">{children}</p>}
-      {action && <div className="mt-3">{action}</div>}
+      {children && <p className="max-w-[400px] text-[15px] leading-6">{children}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { Select } from "./select";
 import { StatusPill } from "./status-pill";
 
 const CHECKBOX = cn(
-  "mt-px grid size-5 shrink-0 cursor-pointer appearance-none place-content-center rounded-sm border-[1.5px] border-line-strong bg-paper-raised",
+  "mt-0.5 grid size-[22px] shrink-0 cursor-pointer appearance-none place-content-center rounded-md border-[1.5px] border-line-strong bg-paper-raised",
   "transition-colors duration-120 ease-out hover:border-success checked:border-success checked:bg-success focus-ring",
   "before:h-[5px] before:w-2.5 before:-translate-y-px before:-rotate-45 before:border-2 before:border-t-0 before:border-r-0 before:border-paper-raised before:opacity-0 before:content-[''] checked:before:opacity-100",
 );
@@ -36,7 +36,7 @@ export function ActionItemCard({ item, today, meeting, onToggle, onStatusChange,
   if (item.due) {
     due = (
       <span className={cn("inline-flex items-center gap-1", late ? "font-[550] text-danger" : "text-ink")}>
-        <Icon name={late ? "alert" : "calendar"} size={14} />
+        <Icon name={late ? "alert" : "calendar"} size={16} />
         {late ? "Overdue · " + formatShortDate(item.due) : "Due " + formatShortDate(item.due)}
       </span>
     );
@@ -45,14 +45,14 @@ export function ActionItemCard({ item, today, meeting, onToggle, onStatusChange,
   } else {
     due = (
       <span className="inline-flex items-center gap-1">
-        <Icon name="calendar" size={14} />
+        <Icon name="calendar" size={16} />
         No date mentioned
       </span>
     );
   }
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3 rounded-lg border border-line bg-paper-raised p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-y-0">
+    <div className="surface grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 p-5 transition-shadow duration-150 ease-out hover:shadow-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-y-0">
       <input
         type="checkbox"
         className={CHECKBOX}
@@ -61,12 +61,12 @@ export function ActionItemCard({ item, today, meeting, onToggle, onStatusChange,
         onChange={(event) => onToggle?.(event.target.checked)}
         aria-label={(done ? "Mark as not done: " : "Mark as done: ") + item.text}
       />
-      <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-w-0 flex-col gap-2.5">
         <p className={cn("text-heading", done ? "text-ink-muted line-through decoration-1" : "text-ink")}>{item.text}</p>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-label font-normal text-ink-muted">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-label font-normal text-ink-muted">
           {item.owner ? (
             <span className="inline-flex items-center gap-1 text-ink">
-              <Icon name="user" size={14} />
+              <Icon name="user" size={16} />
               {item.owner}
             </span>
           ) : (
@@ -74,15 +74,15 @@ export function ActionItemCard({ item, today, meeting, onToggle, onStatusChange,
           )}
           {due}
           {meeting && (
-            <Link href={meeting.href} className="inline-flex items-center gap-1 rounded-sm underline-offset-2 hover:text-ink hover:underline focus-ring">
-              <Icon name="file" size={14} />
+            <Link href={meeting.href} className="inline-flex items-center gap-1.5 rounded-sm text-lilac-ink underline-offset-4 hover:underline focus-ring">
+              <Icon name="file" size={16} />
               {meeting.title}
             </Link>
           )}
         </div>
         {item.quote && (
-          <p className="flex items-baseline gap-2 font-serif text-quote text-ink-muted italic">
-            {item.timestamp && <span className="shrink-0 font-mono text-timestamp not-italic">{item.timestamp}</span>}
+          <p className="flex items-baseline gap-2.5 font-serif text-quote text-ink-muted italic">
+            {item.timestamp && <span className="shrink-0 font-mono text-timestamp text-lilac-ink not-italic">{item.timestamp}</span>}
             <span>“{item.quote}”</span>
           </p>
         )}

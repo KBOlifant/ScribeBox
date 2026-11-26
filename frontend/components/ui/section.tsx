@@ -15,7 +15,7 @@ export function Section({ id, title, count, actions, children }: SectionProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id={id} className="text-title">
           {title}
-          {count != null && <span className="ml-2 font-normal text-ink-muted tabular-nums">{count}</span>}
+          {count != null && <span className="ml-2 font-semibold text-lilac-ink tabular-nums">{count}</span>}
         </h2>
         {actions && <div className="flex gap-2">{actions}</div>}
       </div>

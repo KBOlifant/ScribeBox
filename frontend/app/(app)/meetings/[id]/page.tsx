@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getItemsForMeeting, getMeeting, meetings, MOCK_TODAY } from "@/lib/mock-data";
+import { getItemsForMeeting, getMeeting, meetings, MOCK_TODAY, dateOnly } from "@/lib/mock-data";
 import { MeetingDetail } from "./meeting-detail";
 
 type Params = PageProps<"/meetings/[id]">["params"];
@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps<"/meetings/[id]">):
   return { title: getMeeting(id)?.title ?? "Meeting not found" };
 }
 
-// The route param is read inside Suspense so navigation can show the skeleton instantly.
+// Put this in suspense to allow the skeleton to load first until the content loads properly
 export default function MeetingPage({ params }: PageProps<"/meetings/[id]">) {
   return (
     <Suspense fallback={<MeetingSkeleton />}>
@@ -30,7 +30,7 @@ async function MeetingContent({ params }: { params: Params }) {
   const meeting = getMeeting(id);
   // An unknown id, or later one owned by someone else, gets the same 404: never confirm it exists.
   if (!meeting) notFound();
-  return <MeetingDetail meeting={meeting} initialItems={getItemsForMeeting(id)} today={MOCK_TODAY} />;
+  return <MeetingDetail meeting={meeting} initialItems={getItemsForMeeting(id)} today={dateOnly} />;
 }
 
 function MeetingSkeleton() {

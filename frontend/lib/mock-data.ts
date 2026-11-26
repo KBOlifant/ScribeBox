@@ -6,6 +6,9 @@ import type { ActionItem, Meeting, User } from "./types";
  */
 export const MOCK_TODAY = "2026-11-24";
 
+export const localDateTime: String = new Date().toLocaleString(); // e.g., "11/26/2026, 12:13:00 AM"
+export const dateOnly: string = new Date().toLocaleDateString()
+
 export const currentUser: User = {
   id: "u-1",
   name: "Lerato Mokoena",

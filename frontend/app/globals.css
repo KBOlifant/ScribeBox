@@ -1,51 +1,74 @@
 @import "tailwindcss";
 
 /*
- * ScribeBox design tokens, from the ScribeBox design system (tokens.json).
- * Raw values live on :root and swap for dark mode; @theme maps them to Tailwind utilities
- * (bg-paper, text-ink, border-line-strong, bg-accent, text-review-ink, ...).
+ * ScribeBox design tokens.
+ * Palette: dark gray for structure (the header bar, ink), blue for actions and links, lilac (#B096A5) for
+ * secondary emphasis (dates, counts, the AI's own words, empty states). Depth comes from shadows, not borders:
+ * surfaces sit on the ground with --elev-1, lift to --elev-2 on hover, and fields are recessed with --elev-inset.
+ * Raw values live on :root and swap for dark mode; @theme maps them to Tailwind utilities (bg-paper, text-lilac-ink, shadow-1, surface).
  */
 :root {
   color-scheme: light;
-  --paper: #f6f4ef;
+  --paper: #f1f0f4;
   --paper-raised: #ffffff;
-  --paper-sunk: #eeebe3;
-  --line: #e2ded4;
-  --line-strong: #87827a;
-  --ink: #1b1c20;
-  --ink-muted: #5c5a54;
-  --accent: #2d46c4;
-  --accent-hover: #22379f;
-  --accent-soft: #e7eafa;
+  --paper-sunk: #e7e5ec;
+  --line: #e0dde6;
+  --line-strong: #8a8694;
+  --ink: #1c1d24;
+  --ink-muted: #5b5866;
+  --accent: #3550d8;
+  --accent-hover: #2840b5;
+  --accent-soft: #e6e9fc;
   --on-accent: #ffffff;
-  --review: #f7d760;
+  --lilac: #b096a5;
+  --lilac-soft: #f1e9ee;
+  --lilac-ink: #77586a;
+  --chrome: #1e1f27;
+  --chrome-raised: #2a2b35;
+  --on-chrome: #f2f0f5;
+  --on-chrome-muted: #b3afbd;
+  --chrome-accent: #b4c1ff;
+  --review: #f2c94c;
   --review-soft: #fcefc0;
-  --review-ink: #5e3d00;
+  --review-ink: #7a4f00;
   --success: #0b6877;
   --success-soft: #dcf0f2;
   --danger: #b2321b;
   --danger-soft: #fbe5e0;
   --on-danger: #ffffff;
   --link: var(--accent);
-  --elev-card: 0 1px 2px #1b1c200d;
-  --elev-float: 0 6px 16px #1b1c2014, 0 18px 40px -8px #1b1c2026;
-  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+
+  --elev-1: 0 1px 2px rgb(28 29 36 / 0.05), 0 3px 10px -3px rgb(28 29 36 / 0.1);
+  --elev-2: 0 2px 4px rgb(28 29 36 / 0.06), 0 14px 30px -10px rgb(28 29 36 / 0.22);
+  --elev-float: 0 10px 24px rgb(28 29 36 / 0.1), 0 28px 60px -14px rgb(28 29 36 / 0.3);
+  --elev-inset: inset 0 1px 2px rgb(28 29 36 / 0.1), inset 0 0 0 1px rgb(28 29 36 / 0.1);
+  --elev-accent: 0 1px 2px rgb(28 29 36 / 0.12), 0 4px 10px -4px rgb(28 29 36 / 0.25);
+  --elev-chrome: 0 1px 0 rgb(0 0 0 / 0.2), 0 8px 24px -12px rgb(28 29 36 / 0.5);
+  --focus-ring: 0 0 0 2px var(--paper-raised), 0 0 0 4px var(--accent);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --paper: #15161a;
-    --paper-raised: #1e1f24;
-    --paper-sunk: #0f1013;
-    --line: #2e3036;
-    --line-strong: #70737d;
-    --ink: #edebe5;
-    --ink-muted: #a6a39b;
-    --accent: #93a5ff;
-    --accent-hover: #b4c1ff;
-    --accent-soft: #1e2550;
-    --on-accent: #10131f;
+    --paper: #121318;
+    --paper-raised: #1d1e25;
+    --paper-sunk: #0d0e12;
+    --line: #2b2c35;
+    --line-strong: #6e6b78;
+    --ink: #edebf0;
+    --ink-muted: #b1adba;
+    --accent: #8ea2ff;
+    --accent-hover: #b0beff;
+    --accent-soft: #1f2650;
+    --on-accent: #0e1120;
+    --lilac: #b096a5;
+    --lilac-soft: #352a32;
+    --lilac-ink: #d7c2ce;
+    --chrome: #17181e;
+    --chrome-raised: #24252e;
+    --on-chrome: #edebf0;
+    --on-chrome-muted: #b1adba;
+    --chrome-accent: #b4c1ff;
     --review: #e0b83a;
     --review-soft: #3b3008;
     --review-ink: #f3d067;
@@ -54,8 +77,13 @@
     --danger: #ff9178;
     --danger-soft: #3b1810;
     --on-danger: #1b0d09;
-    --elev-card: 0 1px 2px #00000066;
-    --elev-float: 0 18px 40px -8px #000000cc;
+
+    --elev-1: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.5), 0 6px 16px -6px rgb(0 0 0 / 0.6);
+    --elev-2: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 2px 4px rgb(0 0 0 / 0.5), 0 18px 36px -12px rgb(0 0 0 / 0.75);
+    --elev-float: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 56px -12px rgb(0 0 0 / 0.85);
+    --elev-inset: inset 0 1px 3px rgb(0 0 0 / 0.55), inset 0 0 0 1px rgb(255 255 255 / 0.05);
+    --elev-accent: 0 1px 2px rgb(0 0 0 / 0.45), 0 6px 14px -6px rgb(0 0 0 / 0.7);
+    --elev-chrome: 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 28px -14px rgb(0 0 0 / 0.9);
   }
 }
 
@@ -71,6 +99,14 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-lilac: var(--lilac);
+  --color-lilac-soft: var(--lilac-soft);
+  --color-lilac-ink: var(--lilac-ink);
+  --color-chrome: var(--chrome);
+  --color-chrome-raised: var(--chrome-raised);
+  --color-on-chrome: var(--on-chrome);
+  --color-on-chrome-muted: var(--on-chrome-muted);
+  --color-chrome-accent: var(--chrome-accent);
   --color-review: var(--review);
   --color-review-soft: var(--review-soft);
   --color-review-ink: var(--review-ink);
@@ -85,45 +121,51 @@
   --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "Cascadia Mono", Menlo, monospace;
 
-  --shadow-card: var(--elev-card);
+  --shadow-card: var(--elev-1);
+  --shadow-1: var(--elev-1);
+  --shadow-2: var(--elev-2);
   --shadow-float: var(--elev-float);
+  --shadow-inset: var(--elev-inset);
+  --shadow-accent: var(--elev-accent);
+  --shadow-chrome: var(--elev-chrome);
   --shadow-focus: var(--focus-ring);
-  --shadow-focus-danger: 0 0 0 2px var(--paper), 0 0 0 4px var(--danger);
+  --shadow-focus-danger: 0 0 0 2px var(--paper-raised), 0 0 0 4px var(--danger);
 }
 
 @theme {
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
-  /* Type styles from the design system: text-display, text-title, ... */
-  --text-display: 30px;
-  --text-display--line-height: 36px;
+  /* Type scale. The floor is 13px (captions, timestamps); interface text is 14-16px. */
+  --text-display: 34px;
+  --text-display--line-height: 40px;
   --text-display--font-weight: 600;
-  --text-display--letter-spacing: -0.015em;
-  --text-title: 20px;
+  --text-display--letter-spacing: -0.022em;
+  --text-title: 21px;
   --text-title--line-height: 28px;
   --text-title--font-weight: 600;
-  --text-title--letter-spacing: -0.01em;
-  --text-heading: 16px;
-  --text-heading--line-height: 22px;
+  --text-title--letter-spacing: -0.012em;
+  --text-heading: 17px;
+  --text-heading--line-height: 24px;
   --text-heading--font-weight: 600;
-  --text-body: 15px;
-  --text-body--line-height: 22px;
-  --text-label: 13px;
-  --text-label--line-height: 18px;
+  --text-body: 16px;
+  --text-body--line-height: 24px;
+  --text-label: 14px;
+  --text-label--line-height: 20px;
   --text-label--font-weight: 550;
-  --text-caption: 12px;
-  --text-caption--line-height: 16px;
-  --text-caption--letter-spacing: 0.01em;
-  --text-summary: 17px;
-  --text-summary--line-height: 28px;
-  --text-quote: 14px;
-  --text-quote--line-height: 22px;
-  --text-transcript: 13px;
-  --text-transcript--line-height: 22px;
-  --text-timestamp: 12px;
-  --text-timestamp--line-height: 16px;
+  --text-caption: 13px;
+  --text-caption--line-height: 18px;
+  --text-caption--letter-spacing: 0.005em;
+  --text-summary: 18px;
+  --text-summary--line-height: 30px;
+  --text-quote: 15px;
+  --text-quote--line-height: 24px;
+  --text-transcript: 14px;
+  --text-transcript--line-height: 23px;
+  --text-timestamp: 13px;
+  --text-timestamp--line-height: 18px;
   --text-timestamp--font-weight: 500;
 
   --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
@@ -137,22 +179,42 @@
   body {
     background: var(--paper);
     color: var(--ink);
-    font-size: 15px;
-    line-height: 22px;
+    font-size: 16px;
+    line-height: 24px;
     -webkit-font-smoothing: antialiased;
   }
   ::selection {
-    background: var(--review-soft);
+    background: var(--lilac-soft);
     color: var(--ink);
   }
 }
 
-/* Keyboard focus on every control: a 2px paper gap, then 2px of solid accent. */
+/* Keyboard focus on every control: a 2px surface gap, then 2px of solid accent. */
 @utility focus-ring {
   &:focus-visible {
     outline: 2px solid transparent;
     outline-offset: 2px;
     box-shadow: var(--focus-ring);
+  }
+}
+
+/* A raised surface: the card, panel and list container. Depth from shadow, no border. */
+@utility surface {
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+  box-shadow: var(--elev-1);
+}
+
+/* A surface that answers the pointer: lifts 2px and deepens its shadow. */
+@utility lift {
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out, background-color 120ms ease-out;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--elev-2);
+  }
+  &:active {
+    transform: translateY(0);
+    box-shadow: var(--elev-1);
   }
 }
 

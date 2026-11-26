@@ -67,7 +67,7 @@ export function NewMeetingForm({ today }: { today: string }) {
   }
 
   return (
-    <form noValidate onSubmit={onSubmit} className="flex flex-col gap-6 rounded-lg border border-line bg-paper-raised p-4 sm:p-6">
+    <form noValidate onSubmit={onSubmit} className="surface flex flex-col gap-6 p-5 sm:p-8">
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_200px]">
         <TextField
           label="Meeting title"
@@ -101,7 +101,7 @@ export function NewMeetingForm({ today }: { today: string }) {
         error={errors.transcript}
       />
 
-      <div className="flex flex-col gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-[380px] text-caption text-ink-muted">
           Your transcript is saved before analysis starts, so nothing is lost if the AI is slow or unavailable.
         </p>

@@ -41,13 +41,21 @@ export function transcriptFileError(file: { name: string; size: number }): strin
   }
 }
 
+export function meetingTitleError(value: string): string | undefined {
+  const title = value.trim();
+  if (!title) return "Give the meeting a title.";
+  if (title.length > 120) return "Keep the title under 120 characters.";
+}
+
+export function meetingDateError(value: string): string | undefined {
+  if (!value) return "Choose the meeting date.";
+  if (!isValidIsoDate(value)) return "Enter a real date.";
+}
+
 export function meetingErrors(values: { title: string; date: string; transcript: string }) {
   const errors: FieldErrors<"title" | "date" | "transcript"> = {};
-  const title = values.title.trim();
-  if (!title) errors.title = "Give the meeting a title.";
-  else if (title.length > 120) errors.title = "Keep the title under 120 characters.";
-  if (!values.date) errors.date = "Choose the meeting date.";
-  else if (!isValidIsoDate(values.date)) errors.date = "Enter a real date.";
+  errors.title = meetingTitleError(values.title);
+  errors.date = meetingDateError(values.date);
   const transcript = values.transcript.trim();
   if (!transcript) errors.transcript = "Paste a transcript or upload a file.";
   else if (new TextEncoder().encode(transcript).length > TRANSCRIPT_MAX_BYTES) {

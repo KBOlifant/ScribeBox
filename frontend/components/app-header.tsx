@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { useState } from "react";
+import { auth } from "@/app/configs/firebaseconfig";
 import { cn } from "@/lib/cn";
-import { ButtonLink } from "./ui/button";
+import { useAuth } from "./auth-provider";
+import { Button } from "./ui/button";
 
 const NAV = [
   { href: "/meetings", label: "Meetings" },
@@ -11,15 +15,30 @@ const NAV = [
   { href: "/account", label: "Account" },
 ];
 
-export function AppHeader({ userName, openCount }: { userName: string; openCount: number }) {
+export function AppHeader({ openCount }: { openCount: number }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function onLogOut() {
+    setSigningOut(true);
+    try {
+      await signOut(auth);
+      router.push("/login");
+    } catch {
+      setSigningOut(false);
+    }
+  }
+
   return (
-    <header className="border-b border-line bg-paper-raised">
-      <div className="mx-auto flex max-w-[1120px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-        <Link href="/meetings" className="rounded-sm text-xl font-semibold tracking-[-0.03em] focus-ring">
+    <header className="relative z-10 bg-chrome text-on-chrome shadow-chrome">
+      <div className="mx-auto flex max-w-[1120px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 sm:py-3.5">
+        <Link href="/meetings" className="inline-flex items-center gap-2 rounded-sm text-[22px] leading-7 font-semibold tracking-[-0.03em] focus-ring">
+          <span aria-hidden="true" className="size-2.5 rounded-full bg-lilac" />
           ScribeBox
         </Link>
-        <nav aria-label="Main" className="order-3 -mx-1 flex w-full gap-1 overflow-x-auto sm:order-none sm:mx-0 sm:w-auto">
+        <nav aria-label="Main" className="order-3 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
@@ -28,23 +47,23 @@ export function AppHeader({ userName, openCount }: { userName: string; openCount
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm font-[550] transition-colors duration-120 ease-out focus-ring",
-                  active ? "bg-accent-soft text-accent" : "text-ink-muted hover:bg-paper-sunk hover:text-ink",
+                  "inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-md px-3.5 text-[16px] font-[550] transition-colors duration-120 ease-out focus-ring",
+                  active ? "bg-chrome-raised text-chrome-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]" : "text-on-chrome-muted hover:bg-chrome-raised hover:text-on-chrome",
                 )}
               >
                 {item.label}
                 {item.href === "/action-items" && openCount > 0 && (
-                  <span className="rounded-full bg-paper-sunk px-1.5 text-caption text-ink tabular-nums">{openCount}</span>
+                  <span className="text-[15px] font-semibold text-lilac tabular-nums">{openCount}</span>
                 )}
               </Link>
             );
           })}
         </nav>
         <div className="ml-auto flex items-center gap-3">
-          <span className="hidden text-label font-normal text-ink-muted sm:inline">{userName}</span>
-          <ButtonLink href="/login" variant="ghost" size="sm" icon="logout">
+          <span className="hidden text-[15px] text-on-chrome-muted sm:inline">{user?.displayName ?? user?.email}</span>
+          <Button variant="chrome" size="sm" icon="logout" loading={signingOut} onClick={onLogOut}>
             Log out
-          </ButtonLink>
+          </Button>
         </div>
       </div>
     </header>

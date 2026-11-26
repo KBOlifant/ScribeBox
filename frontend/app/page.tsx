@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Mock mode: there is no session yet, so the root always lands on the meetings list.
+// The (app) layout's AuthGate sends signed-out visitors on to /login.
 export default function Home() {
   redirect("/meetings");
 }
