@@ -1,10 +1,11 @@
 import "server-only";
 
 import { checkTranscriptTool } from "./tools/check-transcript";
+import { findActionCandidatesTool } from "./tools/find-action-candidates";
 import { fail, type DecisionTool, type ToolContext, type ToolResult } from "./types";
 
 // Every tool the decision model is allowed to call. A tool that isn't listed here can't run
-export const decisionTools: DecisionTool[] = [checkTranscriptTool];
+export const decisionTools: DecisionTool[] = [checkTranscriptTool, findActionCandidatesTool];
 
 export function findTool(name: string): DecisionTool | undefined {
   return decisionTools.find((tool) => tool.name === name);
