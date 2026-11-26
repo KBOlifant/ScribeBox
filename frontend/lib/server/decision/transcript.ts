@@ -18,6 +18,20 @@ const VOICE = /^<v\s+([^>]{1,60})>(.*?)(?:<\/v>)?$/i;
 // "Ana: Morning all" or "Ben Smith: I'll send it"
 const SPEAKER = /^([A-Z][\w'.-]*(?: [A-Z][\w'.-]*){0,3}):\s+(.+)$/;
 
+export function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Lowercases and evens out spacing and curly quotes, so a quote can be matched against the transcript
+export function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Splits a .txt, .md or .vtt transcript into spoken lines
 export function parseTranscript(transcript: string): TranscriptLine[] {
   const result: TranscriptLine[] = [];

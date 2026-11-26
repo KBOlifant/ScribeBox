@@ -1,6 +1,7 @@
 import "server-only";
 
-import { parseTranscript, type TranscriptLine } from "./transcript";
+import { findDuePhrase, findIsoDate } from "./dates";
+import { escapeRegExp, parseTranscript, type TranscriptLine } from "./transcript";
 
 // A transcript line that looks like someone agreed to do something.
 // Owners and dates here only ever come from the transcript's own words, never guessed
@@ -21,28 +22,6 @@ const TEAM = /\b(we'll|we will|we need to|we should|let's)\b/i;
 const REQUEST = /\b(can you|could you|would you|please)\b/i;
 const MARKER = /\b(action item|to-?do|follow[- ]up|next step)\b/i;
 
-const DAY = "monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|tonight";
-const MONTH = "jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec";
-const DUE_PHRASE = new RegExp(
-  "\\b(?:(?:by|before|until|on|due)\\s+)?(?:" +
-    [
-      `(?:next|this)\\s+(?:week|month|quarter|${DAY})`,
-      "(?:the\\s+)?end\\s+of\\s+(?:the\\s+)?(?:day|week|month|quarter|sprint)",
-      `\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${MONTH})[a-z]*`,
-      `(?:${MONTH})[a-z]*\\s+\\d{1,2}(?:st|nd|rd|th)?`,
-      "the\\s+holidays",
-      DAY,
-      "eod|eow|asap",
-    ].join("|") +
-    ")\\b",
-  "i",
-);
-const ISO_DATE = /\b(\d{4}-\d{2}-\d{2})\b/;
-
-function escapeRegExp(text: string) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 // A speaker named in the line as the one doing the work: "Ben will…", "Ben, can you…", "can you do it, Ben?"
 function namedOwner(text: string, speakers: string[]): string | null {
   for (const speaker of speakers) {
@@ -54,11 +33,6 @@ function namedOwner(text: string, speakers: string[]): string | null {
     }
   }
   return null;
-}
-
-function validIsoDate(value: string) {
-  const date = new Date(value + "T00:00:00Z");
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function toCandidate(line: TranscriptLine, speakers: string[]): ActionCandidate | null {
@@ -81,8 +55,7 @@ function toCandidate(line: TranscriptLine, speakers: string[]): ActionCandidate 
     ownerHint = { name: line.speaker, basis: "speaker_committed" };
   }
 
-  const iso = ISO_DATE.exec(text);
-  const phrase = DUE_PHRASE.exec(text);
+  const date = findIsoDate(text);
 
   return {
     lineNumber: line.lineNumber,
@@ -92,8 +65,8 @@ function toCandidate(line: TranscriptLine, speakers: string[]): ActionCandidate 
     signals,
     ownerHint,
     dueHint: {
-      date: iso && validIsoDate(iso[1]) ? iso[1] : null,
-      phrase: phrase ? phrase[0] : null,
+      date,
+      phrase: date ? null : findDuePhrase(text),
     },
   };
 }
