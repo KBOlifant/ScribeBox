@@ -2,6 +2,7 @@ import "server-only";
 
 import { checkTranscriptTool } from "./tools/check-transcript";
 import { findActionCandidatesTool } from "./tools/find-action-candidates";
+import { flagForReviewTool } from "./tools/flag-for-review";
 import { saveActionItemsTool } from "./tools/save-action-items";
 import { setAnalysisStateTool } from "./tools/set-analysis-state";
 import { fail, type DecisionTool, type ToolContext, type ToolResult } from "./types";
@@ -12,6 +13,7 @@ export const decisionTools: DecisionTool[] = [
   findActionCandidatesTool,
   setAnalysisStateTool,
   saveActionItemsTool,
+  flagForReviewTool,
 ];
 
 export function findTool(name: string): DecisionTool | undefined {
