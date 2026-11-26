@@ -93,6 +93,17 @@ export class ArgReader {
     return value;
   }
 
+  // A list of ids that may be left out
+  optionalUuidList(key: string, maxLength: number): string[] | null {
+    const value = this.get(key);
+    if (value === undefined || value === null) return null;
+    if (!Array.isArray(value) || value.length > maxLength || !value.every((id) => typeof id === "string" && UUID_PATTERN.test(id))) {
+      this.problem(`${key} must be a list of up to ${maxLength} UUIDs`);
+      return null;
+    }
+    return [...new Set(value as string[])];
+  }
+
   // Lets a tool add its own rule, e.g. "send at least one of these fields"
   check(condition: boolean, message: string) {
     if (!condition) this.problem(message);
