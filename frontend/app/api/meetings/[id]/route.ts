@@ -1,3 +1,4 @@
+import { ANALYSIS_STATE_SQL } from "@/lib/server/analysis";
 import { getUser } from "@/lib/server/auth";
 import { query } from "@/lib/server/db";
 import { ApiError, errorResponse, getBody } from "@/lib/server/http";
@@ -5,9 +6,10 @@ import { hasErrors, meetingDateError, meetingTitleError } from "@/lib/validation
 
 type Params = { params: Promise<{ id: string }> };
 
-// Columns we send back for a meeting (date as text so it stays YYYY-MM-DD)
+// Columns we send back for a meeting (date as text so it stays YYYY-MM-DD).
+// analysis_state comes from the meeting's newest summaries row
 const columns = `id, title, meeting_date::text as date, source_kind, source_name,
-  analysis_state, summary, decisions, created_at, updated_at, transcript`;
+  ${ANALYSIS_STATE_SQL}, summary, decisions, created_at, updated_at, transcript`;
 
 // Meeting ids are UUIDs, so anything else can't exist
 function checkId(id: string) {
