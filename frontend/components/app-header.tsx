@@ -4,12 +4,22 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { auth } from "@/app/configs/firebaseconfig";
+import { useApiData } from "@/hooks/use-api-data";
+import type { ActionItemRow } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { springs } from "@/lib/motion-tokens";
 import { useAuth } from "./auth-provider";
 import { Button } from "./ui/button";
+
+/** Fired on window after the page changes action items, so the header's open count stays current. */
+export const ACTION_ITEMS_CHANGED = "scribebox:action-items-changed";
+
+/** Tells the header (and anything else listening) that action items were created, changed or deleted. */
+export function announceActionItemsChanged() {
+  window.dispatchEvent(new Event(ACTION_ITEMS_CHANGED));
+}
 
 const NAV = [
   { href: "/meetings", label: "Meetings" },
@@ -17,8 +27,24 @@ const NAV = [
   { href: "/account", label: "Account" },
 ];
 
-export function AppHeader({ openCount }: { openCount: number }) {
+export function AppHeader() {
   const pathname = usePathname();
+  // Open action items across all meetings. No count shows while loading or after an error
+  const { data, error, reload } = useApiData<{ actionItems: ActionItemRow[] }>("/api/action-items");
+  // The header stays mounted across pages, so fetch again on each navigation to pick up changes.
+  // The first render already fetches, so only a later change of path triggers another
+  const countedPath = useRef(pathname);
+  useEffect(() => {
+    if (countedPath.current === pathname) return;
+    countedPath.current = pathname;
+    reload();
+  }, [pathname, reload]);
+  // ...and whenever a page says it changed action items without navigating
+  useEffect(() => {
+    window.addEventListener(ACTION_ITEMS_CHANGED, reload);
+    return () => window.removeEventListener(ACTION_ITEMS_CHANGED, reload);
+  }, [reload]);
+  const openCount = data && !error ? data.actionItems.filter((item) => item.progress_state !== "done").length : 0;
   const router = useRouter();
   const { user } = useAuth();
   const [signingOut, setSigningOut] = useState(false);

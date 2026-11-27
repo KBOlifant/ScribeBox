@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { BackLink, PageHeader } from "@/components/ui/page-header";
-import { MOCK_TODAY } from "@/lib/mock-data";
 import { NewMeetingForm } from "./new-meeting-form";
 
 export const metadata: Metadata = { title: "Add a transcript" };
@@ -13,7 +12,7 @@ export default function NewMeetingPage() {
         title="Add a transcript"
         description="Paste the text or upload a file. Analysis starts when you’re ready."
       />
-      <NewMeetingForm today={MOCK_TODAY} />
+      <NewMeetingForm />
     </div>
   );
 }

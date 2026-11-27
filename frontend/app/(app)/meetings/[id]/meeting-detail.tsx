@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { announceActionItemsChanged } from "@/components/app-header";
 import { Presence } from "@/components/motion";
 import { ActionItemCard } from "@/components/ui/action-item-card";
 import { Alert } from "@/components/ui/alert";
 import { AnalysisStatus } from "@/components/ui/analysis-status";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { BackLink, PageHeader } from "@/components/ui/page-header";
@@ -14,40 +16,248 @@ import { Section } from "@/components/ui/section";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TextAreaField, TextField } from "@/components/ui/text-field";
+import { useApiData } from "@/hooks/use-api-data";
 import { useSafeMotion } from "@/hooks/use-reduced-motion";
+import {
+  actionItemBody,
+  api,
+  ApiRequestError,
+  todayIso,
+  toActionItem,
+  toMeeting,
+  type ActionItemRow,
+  type DecisionRow,
+  type MeetingRow,
+  type SummaryRow,
+} from "@/lib/api";
 import { formatLongDate, plural } from "@/lib/format";
-import { wait } from "@/lib/mock";
 import { motionTokens, springs } from "@/lib/motion-tokens";
-import { needsReview, STATUS_LABELS, type ActionItem, type AnalysisState, type ItemStatus, type Meeting } from "@/lib/types";
+import { needsReview, STATUS_LABELS, type ActionItem, type AnalysisState, type ItemStatus } from "@/lib/types";
 import { actionItemErrors, hasErrors, type FieldErrors } from "@/lib/validation";
+import { MeetingSkeleton } from "./meeting-skeleton";
 
-type Props = { meeting: Meeting; initialItems: ActionItem[]; today: string };
+type MeetingData = { meeting: MeetingRow };
+type DecisionsData = { decisions: DecisionRow[] };
+type ItemsData = { actionItems: ActionItemRow[] };
+type SummariesData = { summaries: SummaryRow[] };
 
-export function MeetingDetail({ meeting, initialItems, today }: Props) {
-  const [analysis, setAnalysis] = useState<AnalysisState>(meeting.analysis.state);
-  const [retrying, setRetrying] = useState(false);
-  const [summary, setSummary] = useState(meeting.summary);
-  const [decisions, setDecisions] = useState(meeting.decisions);
-  const [items, setItems] = useState(initialItems);
+/** States from which analysing again needs a fresh run first (POST /summaries). */
+const FINISHED_STATES: AnalysisState[] = ["done", "failed", "rate_limited"];
 
-  const analysing = analysis === "working" || analysis === "queued";
-  const reviewCount = items.filter((item) => item.status !== "done" && needsReview(item)).length;
-  const source = meeting.source.kind === "file" ? meeting.source.name : "Pasted text";
+/** How often to check on an analysis started elsewhere (another tab, another device). */
+const POLL_MS = 5000;
 
-  async function retry() {
-    setRetrying(true);
-    await wait(900);
-    setRetrying(false);
-    setAnalysis("working");
+function messageOf(error: unknown): string {
+  return error instanceof ApiRequestError ? error.message : "Something went wrong. Try again.";
+}
+
+/** "13 Nov at 10:42", in the user's own time zone. */
+function formatFinishedAt(timestamp: string): string | undefined {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return undefined;
+  const day = date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const time = date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return day + " at " + time;
+}
+
+/** Loads the meeting, its decisions, action items and analysis runs, then shows the page. */
+export function MeetingDetail({ id }: { id: string }) {
+  const base = "/api/meetings/" + encodeURIComponent(id);
+  const meetingData = useApiData<MeetingData>(base);
+  const decisionsData = useApiData<DecisionsData>(base + "/decisions");
+  const itemsData = useApiData<ItemsData>(base + "/action-items");
+  const summariesData = useApiData<SummariesData>(base + "/summaries");
+  const sources = [meetingData, decisionsData, itemsData, summariesData];
+
+  // An unknown id, or one owned by someone else, gets the same 404: never confirm it exists.
+  if (meetingData.error?.status === 404) return <MeetingNotFound />;
+
+  if (!meetingData.data || !decisionsData.data || !itemsData.data || !summariesData.data) {
+    const failed = sources.find((source) => source.error && !source.loading && !source.data);
+    if (failed?.error) {
+      return (
+        <div className="mx-auto flex max-w-[880px] flex-col gap-6">
+          <BackLink href="/meetings">Meetings</BackLink>
+          <Alert
+            tone="error"
+            title="This meeting didn’t load."
+            action={
+              <Button
+                size="sm"
+                icon="refresh"
+                onClick={() => sources.forEach((source) => source.error && source.reload())}
+              >
+                Try again
+              </Button>
+            }
+          >
+            {failed.error.message}
+          </Alert>
+        </div>
+      );
+    }
+    return <MeetingSkeleton />;
   }
 
-  const doneLine = [
-    meeting.analysis.finishedAt ? "Analysed " + meeting.analysis.finishedAt : "Analysis complete",
-    plural(items.length, "action item"),
-    reviewCount ? reviewCount + " need review" : null,
-  ]
+  // Fetches all four again in one go, so the page never shows a half-updated meeting
+  async function refresh() {
+    const [meeting, decisions, items, summaries] = await Promise.all([
+      api<MeetingData>(base),
+      api<DecisionsData>(base + "/decisions"),
+      api<ItemsData>(base + "/action-items"),
+      api<SummariesData>(base + "/summaries"),
+    ]);
+    meetingData.setData(meeting);
+    decisionsData.setData(decisions);
+    itemsData.setData(items);
+    summariesData.setData(summaries);
+  }
+
+  return (
+    <MeetingView
+      meetingRow={meetingData.data.meeting}
+      decisionRows={decisionsData.data.decisions}
+      itemRows={itemsData.data.actionItems}
+      runs={summariesData.data.summaries}
+      setMeetingRow={(row) => meetingData.setData({ meeting: row })}
+      setDecisionRows={(rows) => decisionsData.setData({ decisions: rows })}
+      setItemRows={(update) => itemsData.setData((current) => ({ actionItems: update(current?.actionItems ?? []) }))}
+      setRuns={(rows) => summariesData.setData({ summaries: rows })}
+      refresh={refresh}
+    />
+  );
+}
+
+function MeetingNotFound() {
+  return (
+    <div className="mx-auto flex max-w-[480px] flex-col gap-4 py-16">
+      <p className="font-mono text-timestamp text-ink-muted">404</p>
+      <h1 className="text-display">Meeting not found</h1>
+      <p className="text-ink-muted">
+        This meeting doesn’t exist, or it belongs to another account. Meetings are only visible to the person who added
+        them.
+      </p>
+      <div>
+        <ButtonLink href="/meetings" variant="primary">
+          Back to meetings
+        </ButtonLink>
+      </div>
+    </div>
+  );
+}
+
+type ViewProps = {
+  meetingRow: MeetingRow;
+  decisionRows: DecisionRow[];
+  itemRows: ActionItemRow[];
+  runs: SummaryRow[];
+  setMeetingRow: (row: MeetingRow) => void;
+  setDecisionRows: (rows: DecisionRow[]) => void;
+  setItemRows: (update: (rows: ActionItemRow[]) => ActionItemRow[]) => void;
+  setRuns: (rows: SummaryRow[]) => void;
+  refresh: () => Promise<void>;
+};
+
+function MeetingView({ meetingRow, decisionRows, itemRows, runs, setMeetingRow, setDecisionRows, setItemRows, setRuns, refresh }: ViewProps) {
+  const meeting = toMeeting(meetingRow, decisionRows);
+  const itemCount = itemRows.length;
+  const today = todayIso();
+
+  const [running, setRunning] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const analysis: AnalysisState = running ? "working" : meeting.analysis.state;
+
+  const analysing = analysis === "working";
+  const reviewCount = itemRows.map(toActionItem).filter((item) => item.status !== "done" && needsReview(item)).length;
+  const source = meeting.source.kind === "file" ? meeting.source.name : "Pasted text";
+
+  // An analysis started elsewhere: check back until it finishes
+  const refreshRef = useRef(refresh);
+  useEffect(() => {
+    refreshRef.current = refresh;
+  });
+  const watching = meeting.analysis.state === "working" && !running;
+  useEffect(() => {
+    if (!watching) return;
+    const timer = setInterval(() => {
+      refreshRef.current().catch(() => {
+        // A missed check is retried on the next tick
+      });
+    }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [watching]);
+
+  // The new-meeting form sends people here with ?analyse=1 instead of starting the run itself, so
+  // the page starts it the same way the button does and shows it from the first moment. The ref
+  // keeps StrictMode's second effect run from starting it twice.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const autoStart = searchParams.get("analyse") === "1";
+  const autoStarted = useRef(false);
+  const analyseRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    analyseRef.current = analyse;
+  });
+  const startState = meetingRow.analysis_state;
+  useEffect(() => {
+    if (!autoStart || autoStarted.current) return;
+    autoStarted.current = true;
+    const rest = new URLSearchParams(searchParams.toString());
+    rest.delete("analyse");
+    const query = rest.toString();
+    router.replace(query ? pathname + "?" + query : pathname, { scroll: false });
+    // Already running or finished (another tab, a reload): nothing to start
+    if (startState === "queued") void analyseRef.current();
+  }, [autoStart, searchParams, router, pathname, startState]);
+
+  async function analyse() {
+    setAnalysisError(null);
+    setRunning(true);
+    try {
+      if (FINISHED_STATES.includes(meeting.analysis.state)) {
+        try {
+          await api(`/api/meetings/${meeting.id}/summaries`, { method: "POST" });
+        } catch (error) {
+          // 409 here means a run is already waiting, which the analysis below can pick up
+          if (!(error instanceof ApiRequestError && error.status === 409)) throw error;
+        }
+      }
+      await api(`/api/meetings/${meeting.id}/analysis`, { method: "POST" });
+    } catch (error) {
+      setAnalysisError(analysisErrorMessage(error));
+    }
+    try {
+      await refresh();
+    } catch (error) {
+      setAnalysisError((current) => current ?? "The analysis finished, but the page couldn’t update. " + messageOf(error));
+    }
+    // The run may have saved action items
+    announceActionItemsChanged();
+    setRunning(false);
+  }
+
+  // The newest run that finished, for "Analysed 13 Nov at 10:42", and how many tries since the last success
+  const lastDone = runs.find((run) => run.analysis_state === "done");
+  const finishedAt = lastDone ? formatFinishedAt(lastDone.updated_at) : undefined;
+  const sinceDone = runs.findIndex((run) => run.analysis_state === "done");
+  const attempts = sinceDone === -1 ? runs.length : sinceDone;
+
+  const doneLine = [finishedAt ? "Analysed " + finishedAt : "Analysis complete", plural(itemCount, "action item"), reviewCount ? reviewCount + " need review" : null]
     .filter(Boolean)
     .join(" · ");
+
+  // Nothing analyses a waiting meeting on its own, so the person starts it
+  const queuedDetail = "Your transcript is saved. Start the analysis when you’re ready.";
+
+  async function saveSummary(value: string) {
+    // Edit the newest run that has a summary, else the newest run
+    const target = runs.find((run) => run.summary_text) ?? runs[0];
+    if (!target) throw new ApiRequestError(409, "There’s no analysis to edit yet. Run the analysis first.");
+    const { summary } = await api<{ summary: SummaryRow }>(`/api/summaries/${target.id}`, { method: "PATCH", body: { summaryText: value } });
+    setRuns(runs.map((run) => (run.id === summary.id ? summary : run)));
+    setMeetingRow({ ...meetingRow, summary: summary.summary_text });
+  }
 
   return (
     <div className="mx-auto flex max-w-[880px] flex-col gap-10">
@@ -59,15 +269,40 @@ export function MeetingDetail({ meeting, initialItems, today }: Props) {
         />
         {/* Keyed by state, so failed -> working -> done hands over one block at a time. */}
         <AnimatePresence mode="wait" initial={false}>
-          <Presence key={analysis}>
+          <Presence key={analysis} className="flex flex-col gap-3">
             <AnalysisStatus
               state={analysis}
-              retrying={retrying}
-              onRetry={retry}
-              detail={analysis === "done" ? doneLine : undefined}
-              meta={analysis === "failed" && meeting.analysis.attempts ? "Tried " + plural(meeting.analysis.attempts, "time") : undefined}
+              retrying={running}
+              // invalid is final on the server: analysing it again always fails, so no retry button
+              onRetry={analysis === "invalid" ? undefined : analyse}
+              detail={analysis === "done" ? doneLine : analysis === "queued" ? queuedDetail : undefined}
+              meta={analysis === "failed" && attempts ? "Tried " + plural(attempts, "time") : undefined}
             />
+            {analysis === "queued" && (
+              <div>
+                <Button variant="primary" size="sm" icon="refresh" loading={running} onClick={analyse}>
+                  Start analysis
+                </Button>
+              </div>
+            )}
           </Presence>
+        </AnimatePresence>
+        <AnimatePresence initial={false}>
+          {analysisError && (
+            <Presence key="analysis-error">
+              <Alert
+                tone="error"
+                title="The analysis didn’t run."
+                action={
+                  <Button variant="ghost" size="sm" onClick={() => setAnalysisError(null)}>
+                    Dismiss
+                  </Button>
+                }
+              >
+                {analysisError}
+              </Alert>
+            </Presence>
+          )}
         </AnimatePresence>
       </div>
 
@@ -76,10 +311,10 @@ export function MeetingDetail({ meeting, initialItems, today }: Props) {
           <Presence key="skeleton">
             <ResultsSkeleton />
           </Presence>
-        ) : summary !== null ? (
+        ) : meeting.summary !== null ? (
           <Presence key="results" className="flex flex-col gap-10">
-            <SummarySection summary={summary} onSave={setSummary} />
-            <DecisionsSection decisions={decisions} onSave={setDecisions} />
+            <SummarySection summary={meeting.summary} onSave={saveSummary} />
+            <DecisionsSection meetingId={meeting.id} rows={decisionRows} onSaved={setDecisionRows} />
           </Presence>
         ) : (
           <Presence key="pending">
@@ -91,11 +326,29 @@ export function MeetingDetail({ meeting, initialItems, today }: Props) {
         )}
       </AnimatePresence>
 
-      <ActionItemsSection items={items} onChange={setItems} today={today} meetingId={meeting.id} analysing={analysing} analysed={summary !== null} />
+      <ActionItemsSection
+        rows={itemRows}
+        setItemRows={setItemRows}
+        today={today}
+        meetingId={meeting.id}
+        analysing={analysing}
+        analysed={meeting.summary !== null}
+      />
 
       <TranscriptSection transcript={meeting.transcript} />
     </div>
   );
+}
+
+function analysisErrorMessage(error: unknown): string {
+  if (!(error instanceof ApiRequestError)) return "Something went wrong. Try again.";
+  if (error.status === 409) {
+    return "The analysis can’t start right now. It may already be running, or this transcript can’t be analysed again. Wait a minute and reload the page.";
+  }
+  if (error.status === 503) return "Analysis isn’t set up on this server yet. You can still add action items by hand.";
+  if (error.status === 404) return "This meeting no longer exists.";
+  // Network failures and everything else already carry a plain message
+  return error.message;
 }
 
 function ResultsSkeleton() {
@@ -121,20 +374,28 @@ function ResultsSkeleton() {
   );
 }
 
-function SummarySection({ summary, onSave }: { summary: string; onSave: (value: string) => void }) {
+function SummarySection({ summary, onSave }: { summary: string; onSave: (value: string) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(summary);
   const [edited, setEdited] = useState(false);
   const [error, setError] = useState<string>();
+  const [saving, setSaving] = useState(false);
 
-  function save() {
+  async function save() {
     const value = draft.trim();
     if (!value) return setError("Write a summary, or cancel to keep the current one.");
     if (value.length > 4000) return setError("Keep the summary under 4,000 characters.");
-    onSave(value);
-    setEdited(true);
-    setEditing(false);
+    setSaving(true);
     setError(undefined);
+    try {
+      await onSave(value);
+      setEdited(true);
+      setEditing(false);
+    } catch (caught) {
+      setError(caught instanceof ApiRequestError && caught.fields?.summaryText ? caught.fields.summaryText : messageOf(caught));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -161,13 +422,22 @@ function SummarySection({ summary, onSave }: { summary: string; onSave: (value: 
         <AnimatePresence mode="wait" initial={false}>
           {editing ? (
             <Presence key="edit" className="flex flex-col gap-4">
-              <TextAreaField label="Summary" variant="prose" rows={6} value={draft} onChange={(event) => setDraft(event.target.value)} error={error} />
+              <TextAreaField
+                label="Summary"
+                variant="prose"
+                rows={6}
+                value={draft}
+                disabled={saving}
+                onChange={(event) => setDraft(event.target.value)}
+                error={error}
+              />
               <div className="flex gap-3">
-                <Button variant="primary" onClick={save}>
+                <Button variant="primary" loading={saving} onClick={save}>
                   Save summary
                 </Button>
                 <Button
                   variant="ghost"
+                  disabled={saving}
                   onClick={() => {
                     setEditing(false);
                     setError(undefined);
@@ -189,13 +459,73 @@ function SummarySection({ summary, onSave }: { summary: string; onSave: (value: 
   );
 }
 
-function DecisionsSection({ decisions, onSave }: { decisions: string[]; onSave: (value: string[]) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<string[]>(decisions);
+/** A decision being edited. id is null for one added in this edit. */
+type DecisionDraft = { id: string | null; text: string };
 
-  function save() {
-    onSave(draft.map((d) => d.trim()).filter(Boolean));
-    setEditing(false);
+const DECISION_MAX = 500;
+
+function DecisionsSection({ meetingId, rows, onSaved }: { meetingId: string; rows: DecisionRow[]; onSaved: (rows: DecisionRow[]) => void }) {
+  const decisions = rows.map((row) => row.decision_text);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<DecisionDraft[]>([]);
+  const [errors, setErrors] = useState<Record<number, string>>({});
+  const [formError, setFormError] = useState<string>();
+  const [saving, setSaving] = useState(false);
+
+  // Maps the edited list onto the API: delete what was removed or blanked, reword what changed,
+  // add what's new. Each step updates `current`, so a failure part way keeps what did save.
+  async function save() {
+    const cleaned = draft.map((d) => ({ ...d, text: d.text.trim() }));
+    const tooLong: Record<number, string> = {};
+    cleaned.forEach((d, index) => {
+      if (d.text.length > DECISION_MAX) tooLong[index] = "Keep each decision under " + DECISION_MAX + " characters.";
+    });
+    setErrors(tooLong);
+    setFormError(undefined);
+    if (Object.keys(tooLong).length) return;
+
+    setSaving(true);
+    let current = rows;
+    const next = [...cleaned];
+    let index = -1;
+    try {
+      for (const row of rows) {
+        if (!cleaned.some((d) => d.id === row.id && d.text)) {
+          await api(`/api/decisions/${row.id}`, { method: "DELETE" });
+          current = current.filter((r) => r.id !== row.id);
+        }
+      }
+      for (index = 0; index < next.length; index++) {
+        const d = next[index];
+        if (!d.text) continue;
+        const existing = d.id ? current.find((r) => r.id === d.id) : undefined;
+        if (existing) {
+          if (existing.decision_text === d.text) continue;
+          const { decision } = await api<{ decision: DecisionRow }>(`/api/decisions/${existing.id}`, {
+            method: "PATCH",
+            body: { decisionText: d.text },
+          });
+          current = current.map((r) => (r.id === decision.id ? decision : r));
+        } else {
+          const { decision } = await api<{ decision: DecisionRow }>(`/api/meetings/${meetingId}/decisions`, {
+            method: "POST",
+            body: { decisionText: d.text },
+          });
+          current = [...current, decision];
+          next[index] = { id: decision.id, text: d.text };
+        }
+      }
+      onSaved(current);
+      setEditing(false);
+    } catch (caught) {
+      onSaved(current);
+      setDraft(next);
+      const fieldError = caught instanceof ApiRequestError ? caught.fields?.decisionText : undefined;
+      if (fieldError && index >= 0) setErrors({ [index]: fieldError });
+      else setFormError("Some changes didn’t save. " + messageOf(caught));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -210,7 +540,9 @@ function DecisionsSection({ decisions, onSave }: { decisions: string[]; onSave: 
             size="sm"
             icon="edit"
             onClick={() => {
-              setDraft(decisions.length ? decisions : [""]);
+              setDraft(rows.length ? rows.map((row) => ({ id: row.id, text: row.decision_text })) : [{ id: null, text: "" }]);
+              setErrors({});
+              setFormError(undefined);
               setEditing(true);
             }}
           >
@@ -222,32 +554,39 @@ function DecisionsSection({ decisions, onSave }: { decisions: string[]; onSave: 
       <AnimatePresence mode="wait" initial={false}>
         {editing ? (
           <Presence key="edit" className="surface flex flex-col gap-4 p-5 sm:p-7">
+            {formError && <Alert tone="error">{formError}</Alert>}
             {draft.map((decision, index) => (
               <div key={index} className="flex items-end gap-2">
                 <TextField
                   className="flex-1"
                   label={"Decision " + (index + 1)}
-                  value={decision}
-                  onChange={(event) => setDraft(draft.map((d, i) => (i === index ? event.target.value : d)))}
+                  value={decision.text}
+                  disabled={saving}
+                  error={errors[index]}
+                  onChange={(event) => setDraft(draft.map((d, i) => (i === index ? { ...d, text: event.target.value } : d)))}
                 />
                 <Button
                   variant="ghost"
                   icon="trash"
                   aria-label={"Remove decision " + (index + 1)}
-                  onClick={() => setDraft(draft.filter((_, i) => i !== index))}
+                  disabled={saving}
+                  onClick={() => {
+                    setDraft(draft.filter((_, i) => i !== index));
+                    setErrors({});
+                  }}
                 />
               </div>
             ))}
             <div>
-              <Button variant="ghost" size="sm" icon="plus" onClick={() => setDraft([...draft, ""])}>
+              <Button variant="ghost" size="sm" icon="plus" disabled={saving} onClick={() => setDraft([...draft, { id: null, text: "" }])}>
                 Add another
               </Button>
             </div>
             <div className="flex gap-3 pt-2">
-              <Button variant="primary" onClick={save}>
+              <Button variant="primary" loading={saving} onClick={save}>
                 Save decisions
               </Button>
-              <Button variant="ghost" onClick={() => setEditing(false)}>
+              <Button variant="ghost" disabled={saving} onClick={() => setEditing(false)}>
                 Cancel
               </Button>
             </div>
@@ -257,7 +596,7 @@ function DecisionsSection({ decisions, onSave }: { decisions: string[]; onSave: 
             {decisions.length ? (
               <ol className="surface flex flex-col py-2">
                 {decisions.map((decision, index) => (
-                  <li key={index} className="flex gap-4 px-5 py-4 sm:px-7 divide-y">
+                  <li key={rows[index].id} className="flex gap-4 px-5 py-4 sm:px-7 divide-y">
                     <span className="pt-1.5 font-mono text-timestamp text-lilac-ink">{String(index + 1).padStart(2, "0")}</span>
                     <p className="font-serif text-summary">{decision}</p>
                   </li>
@@ -274,53 +613,124 @@ function DecisionsSection({ decisions, onSave }: { decisions: string[]; onSave: 
 }
 
 type ItemsSectionProps = {
-  items: ActionItem[];
-  onChange: (items: ActionItem[]) => void;
+  rows: ActionItemRow[];
+  setItemRows: (update: (rows: ActionItemRow[]) => ActionItemRow[]) => void;
   today: string;
   meetingId: string;
   analysing: boolean;
   analysed: boolean;
 };
 
-function ActionItemsSection({ items, onChange, today, meetingId, analysing, analysed }: ItemsSectionProps) {
+function ActionItemsSection({ rows, setItemRows, today, meetingId, analysing, analysed }: ItemsSectionProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [lastDeleted, setLastDeleted] = useState<{ item: ActionItem; index: number } | null>(null);
+  const [lastDeleted, setLastDeleted] = useState<{ row: ActionItemRow; index: number } | null>(null);
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
+  const [undoing, setUndoing] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const itemMotion = useSafeMotion(motionTokens.distance.sm);
+  const items = rows.map(toActionItem);
 
-  function update(id: string, patch: Partial<ActionItem>) {
-    onChange(items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  function markPending(id: string, on: boolean) {
+    setPending((current) => {
+      const next = new Set(current);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   }
 
-  function remove(id: string) {
-    const index = items.findIndex((item) => item.id === id);
-    setLastDeleted({ item: items[index], index });
-    onChange(items.filter((item) => item.id !== id));
+  function replaceRow(row: ActionItemRow) {
+    setItemRows((current) => current.map((r) => (r.id === row.id ? row : r)));
   }
 
-  function undo() {
+  // Status changes show at once and roll back if the API says no
+  async function changeStatus(item: ActionItem, status: ItemStatus) {
+    if (pending.has(item.id)) return;
+    setSaveError(null);
+    markPending(item.id, true);
+    const previous = rows.find((r) => r.id === item.id);
+    setItemRows((current) => current.map((r) => (r.id === item.id ? { ...r, progress_state: status } : r)));
+    try {
+      const { actionItem } = await api<{ actionItem: ActionItemRow }>(`/api/action-items/${item.id}`, {
+        method: "PATCH",
+        body: actionItemBody({ status }),
+      });
+      replaceRow(actionItem);
+      announceActionItemsChanged();
+    } catch (caught) {
+      if (previous) replaceRow(previous);
+      setSaveError("The status didn’t change. " + messageOf(caught));
+    } finally {
+      markPending(item.id, false);
+    }
+  }
+
+  async function remove(item: ActionItem, index: number) {
+    if (pending.has(item.id)) return;
+    setSaveError(null);
+    markPending(item.id, true);
+    try {
+      await api(`/api/action-items/${item.id}`, { method: "DELETE" });
+      const removed = rows.find((r) => r.id === item.id);
+      setItemRows((current) => current.filter((r) => r.id !== item.id));
+      if (removed) setLastDeleted({ row: removed, index });
+      announceActionItemsChanged();
+    } catch (caught) {
+      setSaveError("The action item wasn’t deleted. " + messageOf(caught));
+    } finally {
+      markPending(item.id, false);
+    }
+  }
+
+  // The API has no restore, so undo adds the same item back (it gets a new id)
+  async function undo() {
     if (!lastDeleted) return;
-    const next = [...items];
-    next.splice(lastDeleted.index, 0, lastDeleted.item);
-    onChange(next);
-    setLastDeleted(null);
+    const { row, index } = lastDeleted;
+    const item = toActionItem(row);
+    setUndoing(true);
+    setSaveError(null);
+    try {
+      const { actionItem } = await api<{ actionItem: ActionItemRow }>(`/api/meetings/${meetingId}/action-items`, {
+        method: "POST",
+        body: actionItemBody({
+          text: item.text,
+          owner: item.owner,
+          ownerNote: item.ownerNote,
+          due: item.due,
+          dueNote: item.dueNote,
+          status: item.status,
+          quote: item.quote,
+          timestamp: item.timestamp,
+        }),
+      });
+      setItemRows((current) => {
+        const next = [...current];
+        next.splice(Math.min(index, next.length), 0, actionItem);
+        return next;
+      });
+      setLastDeleted(null);
+      announceActionItemsChanged();
+    } catch (caught) {
+      setSaveError("The action item couldn’t be restored. " + messageOf(caught));
+    } finally {
+      setUndoing(false);
+    }
   }
 
-  function save(values: EditorValues, existing: ActionItem | null) {
+  async function save(values: EditorValues, existing: ActionItem | null) {
     const owner = values.owner || null;
     const due = values.due || null;
+    const fields = actionItemBody({ text: values.text, owner, due, status: values.status });
     if (existing) {
-      update(existing.id, {
-        text: values.text,
-        owner,
-        due,
-        status: values.status,
-        // A value a person typed resolves the AI's review flag; a blank keeps it.
-        ownerNote: owner ? undefined : existing.ownerNote,
-        dueNote: due ? undefined : existing.dueNote,
-      });
+      // A value a person typed resolves the AI's review flag (null clears it); a blank keeps it.
+      const body = { ...fields, ...(owner ? { ownerNote: null } : {}), ...(due ? { dueNote: null } : {}) };
+      const { actionItem } = await api<{ actionItem: ActionItemRow }>(`/api/action-items/${existing.id}`, { method: "PATCH", body });
+      replaceRow(actionItem);
     } else {
-      onChange([...items, { id: crypto.randomUUID(), meetingId, text: values.text, owner, due, status: values.status }]);
+      const { actionItem } = await api<{ actionItem: ActionItemRow }>(`/api/meetings/${meetingId}/action-items`, { method: "POST", body: fields });
+      setItemRows((current) => [...current, actionItem]);
     }
+    announceActionItemsChanged();
     setEditingId(null);
   }
 
@@ -341,13 +751,27 @@ function ActionItemsSection({ items, onChange, today, meetingId, analysing, anal
       }
     >
       <AnimatePresence initial={false}>
+        {saveError && (
+          <Presence key="save-error">
+            <Alert
+              tone="error"
+              action={
+                <Button variant="ghost" size="sm" onClick={() => setSaveError(null)}>
+                  Dismiss
+                </Button>
+              }
+            >
+              {saveError}
+            </Alert>
+          </Presence>
+        )}
         {lastDeleted && (
           <Presence key="undo">
             <Alert
               tone="success"
               title="Action item deleted."
               action={
-                <Button variant="ghost" size="sm" onClick={undo}>
+                <Button variant="ghost" size="sm" loading={undoing} onClick={undo}>
                   Undo
                 </Button>
               }
@@ -373,7 +797,7 @@ function ActionItemsSection({ items, onChange, today, meetingId, analysing, anal
           <Presence key="list" className="relative flex flex-col gap-3">
             {/* popLayout takes a removed card out of the flow at once, so the cards below slide up while it fades. */}
             <AnimatePresence mode="popLayout" initial={false}>
-              {items.map((item) => (
+              {items.map((item, index) => (
                 <motion.div key={item.id} layout="position" {...itemMotion} transition={springs.snappy}>
                   <AnimatePresence mode="wait" initial={false}>
                     {editingId === item.id ? (
@@ -385,12 +809,26 @@ function ActionItemsSection({ items, onChange, today, meetingId, analysing, anal
                         <ActionItemCard
                           item={item}
                           today={today}
-                          onToggle={(done) => update(item.id, { status: done ? "done" : "todo" })}
-                          onStatusChange={(status) => update(item.id, { status })}
+                          onToggle={(done) => changeStatus(item, done ? "done" : "todo")}
+                          onStatusChange={(status) => changeStatus(item, status)}
                           actions={
                             <>
-                              <Button variant="ghost" size="sm" icon="edit" aria-label={"Edit: " + item.text} onClick={() => setEditingId(item.id)} />
-                              <Button variant="ghost" size="sm" icon="trash" aria-label={"Delete: " + item.text} onClick={() => remove(item.id)} />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                icon="edit"
+                                aria-label={"Edit: " + item.text}
+                                disabled={pending.has(item.id)}
+                                onClick={() => setEditingId(item.id)}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                icon="trash"
+                                aria-label={"Delete: " + item.text}
+                                disabled={pending.has(item.id)}
+                                onClick={() => remove(item, index)}
+                              />
                             </>
                           }
                         />
@@ -431,38 +869,64 @@ function ActionItemsSection({ items, onChange, today, meetingId, analysing, anal
 
 type EditorValues = { text: string; owner: string; due: string; status: ItemStatus };
 
-function ActionItemEditor({ initial, onSave, onCancel }: { initial: ActionItem | null; onSave: (values: EditorValues) => void; onCancel: () => void }) {
+/** API field names, as 422 responses key them, mapped onto the editor's error slots. */
+const API_FIELDS: Record<string, "text" | "owner" | "due"> = { title: "text", owner: "owner", actionDate: "due" };
+
+function ActionItemEditor({ initial, onSave, onCancel }: { initial: ActionItem | null; onSave: (values: EditorValues) => Promise<void>; onCancel: () => void }) {
   const [text, setText] = useState(initial?.text ?? "");
   const [owner, setOwner] = useState(initial?.owner ?? "");
   const [due, setDue] = useState(initial?.due ?? "");
   const [status, setStatus] = useState<ItemStatus>(initial?.status ?? "todo");
   const [errors, setErrors] = useState<FieldErrors<"text" | "owner" | "due">>({});
+  const [formError, setFormError] = useState<string>();
+  const [saving, setSaving] = useState(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     const next = actionItemErrors({ text, owner, due });
     setErrors(next);
+    setFormError(undefined);
     if (hasErrors(next)) return;
-    onSave({ text: text.trim(), owner: owner.trim(), due, status });
+    setSaving(true);
+    try {
+      await onSave({ text: text.trim(), owner: owner.trim(), due, status });
+    } catch (caught) {
+      const fieldErrors: FieldErrors<"text" | "owner" | "due"> = {};
+      const other: string[] = [];
+      if (caught instanceof ApiRequestError && caught.fields) {
+        for (const [key, message] of Object.entries(caught.fields)) {
+          if (!message) continue;
+          if (API_FIELDS[key]) fieldErrors[API_FIELDS[key]] = message;
+          else other.push(message);
+        }
+      }
+      setErrors(fieldErrors);
+      if (other.length) setFormError(other.join(" "));
+      else if (!hasErrors(fieldErrors)) setFormError(messageOf(caught));
+      setSaving(false);
+    }
   }
 
   return (
     <form noValidate onSubmit={submit} className="surface flex flex-col gap-4 p-5 shadow-[var(--elev-2),0_0_0_2px_var(--accent)]">
       <p className="text-heading">{initial ? "Edit action item" : "New action item"}</p>
-      <TextField label="What needs doing" value={text} onChange={(event) => setText(event.target.value)} error={errors.text} />
+      {formError && <Alert tone="error">{formError}</Alert>}
+      <TextField label="What needs doing" value={text} disabled={saving} onChange={(event) => setText(event.target.value)} error={errors.text} />
       <div className="grid gap-4 sm:grid-cols-3">
         <TextField
           label="Owner"
           optional
           value={owner}
+          disabled={saving}
           onChange={(event) => setOwner(event.target.value)}
           hint="Leave blank if the transcript doesn’t say."
           error={errors.owner}
         />
-        <TextField label="Due date" optional type="date" value={due} onChange={(event) => setDue(event.target.value)} error={errors.due} />
+        <TextField label="Due date" optional type="date" value={due} disabled={saving} onChange={(event) => setDue(event.target.value)} error={errors.due} />
         <label className="flex flex-col gap-2">
           <span className="text-label">Status</span>
-          <Select controlSize="md" className="w-full" value={status} onChange={(event) => setStatus(event.target.value as ItemStatus)}>
+          <Select controlSize="md" className="w-full" value={status} disabled={saving} onChange={(event) => setStatus(event.target.value as ItemStatus)}>
             {(Object.keys(STATUS_LABELS) as ItemStatus[]).map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABELS[s]}
@@ -472,10 +936,10 @@ function ActionItemEditor({ initial, onSave, onCancel }: { initial: ActionItem |
         </label>
       </div>
       <div className="flex gap-3">
-        <Button type="submit" variant="primary">
+        <Button type="submit" variant="primary" loading={saving}>
           {initial ? "Save action item" : "Add action item"}
         </Button>
-        <Button variant="ghost" onClick={onCancel}>
+        <Button variant="ghost" disabled={saving} onClick={onCancel}>
           Cancel
         </Button>
       </div>

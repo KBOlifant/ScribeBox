@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { AuthGate } from "@/components/auth-gate";
-import { actionItems } from "@/lib/mock-data";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const openCount = actionItems.filter((item) => item.status !== "done").length;
   return (
     <AuthGate>
       <div className="flex min-h-dvh flex-col">
@@ -14,7 +12,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <AppHeader openCount={openCount} />
+      <AppHeader />
       <main id="main" className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-8 sm:px-6 sm:py-12">
         {children}
       </main>
