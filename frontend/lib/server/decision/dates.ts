@@ -1,5 +1,7 @@
 import "server-only";
 
+import { isValidIsoDate } from "@/lib/format";
+
 const DAY = "monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|tonight";
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const MONTH = MONTHS.join("|") + "|sept";
@@ -23,11 +25,8 @@ const ISO_DATE = /\b(\d{4}-\d{2}-\d{2})\b/;
 const DAY_MONTH = new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH})[a-z]*\\b`, "gi");
 const MONTH_DAY = new RegExp(`\\b(${MONTH})[a-z]*\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`, "gi");
 
-export function isValidIsoDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(value + "T00:00:00Z");
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
+// The same date check the app and API use
+export { isValidIsoDate };
 
 // The first ISO date written in the text, if it's a real date
 export function findIsoDate(text: string): string | null {

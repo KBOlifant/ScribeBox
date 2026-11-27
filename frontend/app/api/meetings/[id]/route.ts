@@ -1,6 +1,6 @@
 import { getUser } from "@/lib/server/auth";
 import { query } from "@/lib/server/db";
-import { ApiError, checkId as checkUuid, errorResponse, getBody } from "@/lib/server/http";
+import { ApiError, checkId as checkUuid, errorResponse, getBody, hasNullCharacter } from "@/lib/server/http";
 import { MEETING_COLUMNS } from "@/lib/server/meetings";
 import { hasErrors, meetingDateError, meetingTitleError } from "@/lib/validation";
 
@@ -47,6 +47,10 @@ export async function PATCH(request: Request, { params }: Params) {
 
     if (title === null && date === null) {
       throw new ApiError(400, "Send a title or date to update");
+    }
+
+    if (title !== null && hasNullCharacter(title)) {
+      throw new ApiError(422, "The title contains a character that can't be saved");
     }
 
     const errors = {

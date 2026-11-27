@@ -1,6 +1,6 @@
 import { getUser } from "@/lib/server/auth";
 import { query } from "@/lib/server/db";
-import { ApiError, errorResponse, getBody } from "@/lib/server/http";
+import { ApiError, errorResponse, getBody, hasNullCharacter } from "@/lib/server/http";
 import { MEETING_COLUMNS as columns } from "@/lib/server/meetings";
 import { hasErrors, meetingErrors } from "@/lib/validation";
 
@@ -35,6 +35,10 @@ export async function POST(request: Request) {
     const date = asText(body.date);
     const transcript = asText(body.transcript);
     const sourceName = asText(body.sourceName).trim();
+
+    if (hasNullCharacter(title, transcript, sourceName)) {
+      throw new ApiError(422, "The meeting contains a character that can't be saved");
+    }
 
     const errors = meetingErrors({ title, date, transcript });
     if (hasErrors(errors)) {

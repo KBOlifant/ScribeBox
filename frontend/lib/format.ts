@@ -49,6 +49,8 @@ export function isOverdue(due: string | null, status: ItemStatus, today: string)
 export function isValidIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const { y, m, d } = parse(value);
+  // There's no year 0 (the database rejects it)
+  if (y < 1) return false;
   const daysInMonth = [31, y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   return m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth[m - 1];
 }

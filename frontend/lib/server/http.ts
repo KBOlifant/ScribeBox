@@ -21,6 +21,11 @@ export function checkId(id: string, notFoundMessage: string) {
   }
 }
 
+// Postgres can't store the null character, so text containing it would fail with a 500
+export function hasNullCharacter(...values: string[]): boolean {
+  return values.some((value) => value.includes("\u0000"));
+}
+
 // Turns an error into a JSON response
 export function errorResponse(error: unknown) {
   if (error instanceof ApiError) {

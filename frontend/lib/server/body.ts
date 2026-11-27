@@ -58,8 +58,7 @@ export class BodyReader {
     const value = this.read(key);
     if (value === undefined || value === null) return value;
     if (value === "") return null;
-    // Postgres has no year 0, so it would reject 0000-xx-xx with a 500
-    if (typeof value !== "string" || !isValidIsoDate(value) || value.startsWith("0000")) {
+    if (typeof value !== "string" || !isValidIsoDate(value)) {
       this.errors[key] = `${label} must be a real date, like 2026-11-27.`;
       return undefined;
     }
