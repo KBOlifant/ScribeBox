@@ -4,8 +4,6 @@ ScribeBox turns a meeting transcript into a short summary, the decisions that we
 
 It never invents an owner or a date. If the transcript doesn't name who owns a task, or only gives a relative date like "by Friday", the item is saved without it and flagged for a person to review, with a note saying why.
 
-Built as a 7-day graduate assessment for Luckybeard. The app lives in [`frontend/`](frontend/).
-
 ## Contents
 
 - [What it does](#what-it-does)
