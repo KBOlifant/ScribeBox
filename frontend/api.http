@@ -124,10 +124,26 @@ Content-Type: application/json
 }
 
 
+############################## ANALYSIS ##############################
+### Runs before SUMMARIES: a fresh meeting has no run yet, so this works straight away.
+
+### 13. Analyse the meeting now. Calls Jev and GPT, so it can take a minute. Expect 200 with a trace, stoppedBecause "done".
+POST {{baseUrl}}/api/meetings/{{meetingId}}/analysis
+Authorization: Bearer {{token}}
+
+### 14. Run it again straight away. The newest run is done, so start a new run first (step 16). Expect 409.
+POST {{baseUrl}}/api/meetings/{{meetingId}}/analysis
+Authorization: Bearer {{token}}
+
+### 15. Meeting id that is not a UUID. Expect 404.
+POST {{baseUrl}}/api/meetings/not-a-uuid/analysis
+Authorization: Bearer {{token}}
+
+
 ############################## SUMMARIES ##############################
 ### Analysis runs of the meeting from step 7. States: queued, working, done, failed, rate_limited, invalid.
 
-### 13. Start an analysis run. The body is optional. Expect 201, state "queued".
+### 16. Start a new run (the one from step 13 is done). The body is optional. Expect 201, state "queued".
 # @name createSummary
 POST {{baseUrl}}/api/meetings/{{meetingId}}/summaries
 Authorization: Bearer {{token}}
@@ -137,19 +153,19 @@ Content-Type: application/json
   "modelName": "test-model"
 }
 
-### 14. Start a second run while the first is still queued. Expect 409.
+### 17. Start a second run while the first is still queued. Expect 409.
 POST {{baseUrl}}/api/meetings/{{meetingId}}/summaries
 Authorization: Bearer {{token}}
 
-### 15. List the meeting's runs, newest first. Expect 200.
+### 18. List the meeting's runs, newest first. Expect 200.
 GET {{baseUrl}}/api/meetings/{{meetingId}}/summaries
 Authorization: Bearer {{token}}
 
-### 16. Get the run from step 13. Expect 200.
+### 19. Get the run from step 16. Expect 200.
 GET {{baseUrl}}/api/summaries/{{summaryId}}
 Authorization: Bearer {{token}}
 
-### 17. Edit the summary text and model name. Expect 200.
+### 20. Edit the summary text and model name. Expect 200.
 PATCH {{baseUrl}}/api/summaries/{{summaryId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -159,7 +175,7 @@ Content-Type: application/json
   "modelName": "test-model-2"
 }
 
-### 18. Move queued to working. Expect 200.
+### 21. Move queued to working. Expect 200.
 PATCH {{baseUrl}}/api/summaries/{{summaryId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -168,7 +184,7 @@ Content-Type: application/json
   "analysisState": "working"
 }
 
-### 19. Move back to queued. Use step 13 for a new run instead. Expect 409.
+### 22. Move back to queued. Use step 16 for a new run instead. Expect 409.
 PATCH {{baseUrl}}/api/summaries/{{summaryId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -177,7 +193,7 @@ Content-Type: application/json
   "analysisState": "queued"
 }
 
-### 20. Move working to done. Expect 200.
+### 23. Move working to done. Expect 200.
 PATCH {{baseUrl}}/api/summaries/{{summaryId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -186,18 +202,18 @@ Content-Type: application/json
   "analysisState": "done"
 }
 
-### 21. Id that is not a UUID. Expect 404.
+### 24. Id that is not a UUID. Expect 404.
 GET {{baseUrl}}/api/summaries/not-a-uuid
 Authorization: Bearer {{token}}
 
-### 22. Delete the run. Expect 204.
+### 25. Delete the run. Expect 204.
 DELETE {{baseUrl}}/api/summaries/{{summaryId}}
 Authorization: Bearer {{token}}
 
 
 ############################## DECISIONS ##############################
 
-### 23. Add a decision to the meeting. Expect 201.
+### 26. Add a decision to the meeting. Expect 201.
 # @name createDecision
 POST {{baseUrl}}/api/meetings/{{meetingId}}/decisions
 Authorization: Bearer {{token}}
@@ -207,7 +223,7 @@ Content-Type: application/json
   "decisionText": "Ship the beta next week."
 }
 
-### 24. Add with empty text. Expect 422.
+### 27. Add with empty text. Expect 422.
 POST {{baseUrl}}/api/meetings/{{meetingId}}/decisions
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -216,15 +232,15 @@ Content-Type: application/json
   "decisionText": "   "
 }
 
-### 25. List the meeting's decisions. Expect 200.
+### 28. List the meeting's decisions. Expect 200.
 GET {{baseUrl}}/api/meetings/{{meetingId}}/decisions
 Authorization: Bearer {{token}}
 
-### 26. Get the decision from step 23. Expect 200.
+### 29. Get the decision from step 26. Expect 200.
 GET {{baseUrl}}/api/decisions/{{decisionId}}
 Authorization: Bearer {{token}}
 
-### 27. Reword it. Expect 200.
+### 30. Reword it. Expect 200.
 PATCH {{baseUrl}}/api/decisions/{{decisionId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -233,14 +249,14 @@ Content-Type: application/json
   "decisionText": "Ship the beta on Monday."
 }
 
-### 28. Empty PATCH body. Expect 400 "Send at least one field to update".
+### 31. Empty PATCH body. Expect 400 "Send at least one field to update".
 PATCH {{baseUrl}}/api/decisions/{{decisionId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {}
 
-### 29. Try to change the meeting. Expect 422 "This field can't be set here."
+### 32. Try to change the meeting. Expect 422 "This field can't be set here."
 PATCH {{baseUrl}}/api/decisions/{{decisionId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -249,11 +265,11 @@ Content-Type: application/json
   "meetingId": "{{meetingId}}"
 }
 
-### 30. Delete the decision. Expect 204.
+### 33. Delete the decision. Expect 204.
 DELETE {{baseUrl}}/api/decisions/{{decisionId}}
 Authorization: Bearer {{token}}
 
-### 31. Get it again. Expect 404.
+### 34. Get it again. Expect 404.
 GET {{baseUrl}}/api/decisions/{{decisionId}}
 Authorization: Bearer {{token}}
 
@@ -261,7 +277,7 @@ Authorization: Bearer {{token}}
 ############################## ACTION ITEMS ##############################
 ### progressState is one of: todo, in_progress, done. Only title is required when creating.
 
-### 32. Add an action item with every field. Expect 201.
+### 35. Add an action item with every field. Expect 201.
 # @name createActionItem
 POST {{baseUrl}}/api/meetings/{{meetingId}}/action-items
 Authorization: Bearer {{token}}
@@ -278,7 +294,7 @@ Content-Type: application/json
   "progressState": "todo"
 }
 
-### 33. Add one with only a title. Expect 201.
+### 36. Add one with only a title. Expect 201.
 POST {{baseUrl}}/api/meetings/{{meetingId}}/action-items
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -287,7 +303,7 @@ Content-Type: application/json
   "title": "Plan the beta launch"
 }
 
-### 34. Add with a missing title, a bad date and an unknown field. Expect 422 with a message per field.
+### 37. Add with a missing title, a bad date and an unknown field. Expect 422 with a message per field.
 POST {{baseUrl}}/api/meetings/{{meetingId}}/action-items
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -297,27 +313,27 @@ Content-Type: application/json
   "priority": "high"
 }
 
-### 35. List the meeting's action items. Expect 200.
+### 38. List the meeting's action items. Expect 200.
 GET {{baseUrl}}/api/meetings/{{meetingId}}/action-items
 Authorization: Bearer {{token}}
 
-### 36. List all my action items, across meetings. Expect 200.
+### 39. List all my action items, across meetings. Expect 200.
 GET {{baseUrl}}/api/action-items
 Authorization: Bearer {{token}}
 
-### 37. Only the ones still to do. Expect 200.
+### 40. Only the ones still to do. Expect 200.
 GET {{baseUrl}}/api/action-items?progressState=todo
 Authorization: Bearer {{token}}
 
-### 38. Bad filter value. Expect 400.
+### 41. Bad filter value. Expect 400.
 GET {{baseUrl}}/api/action-items?progressState=started
 Authorization: Bearer {{token}}
 
-### 39. Get the action item from step 32. Expect 200.
+### 42. Get the action item from step 35. Expect 200.
 GET {{baseUrl}}/api/action-items/{{actionItemId}}
 Authorization: Bearer {{token}}
 
-### 40. Mark it in progress. Expect 200.
+### 43. Mark it in progress. Expect 200.
 PATCH {{baseUrl}}/api/action-items/{{actionItemId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -326,7 +342,7 @@ Content-Type: application/json
   "progressState": "in_progress"
 }
 
-### 41. Clear the optional fields with null. Expect 200.
+### 44. Clear the optional fields with null. Expect 200.
 PATCH {{baseUrl}}/api/action-items/{{actionItemId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -337,30 +353,30 @@ Content-Type: application/json
   "dueNote": null
 }
 
-### 42. Id that is not a UUID. Expect 404.
+### 45. Id that is not a UUID. Expect 404.
 GET {{baseUrl}}/api/action-items/not-a-uuid
 Authorization: Bearer {{token}}
 
-### 43. Delete the action item. Expect 204.
+### 46. Delete the action item. Expect 204.
 DELETE {{baseUrl}}/api/action-items/{{actionItemId}}
 Authorization: Bearer {{token}}
 
 
 ############################## CLEAN UP ##############################
-### Deleting the meeting also deletes its summaries, decisions and action items (step 33 included).
+### Deleting the meeting also deletes its summaries, decisions and action items (step 36 included).
 
-### 44. Delete the meeting. Expect 204.
+### 47. Delete the meeting. Expect 204.
 DELETE {{baseUrl}}/api/meetings/{{meetingId}}
 Authorization: Bearer {{token}}
 
-### 45. Get it again. Expect 404.
+### 48. Get it again. Expect 404.
 GET {{baseUrl}}/api/meetings/{{meetingId}}
 Authorization: Bearer {{token}}
 
 
 ############################## DELETE ACCOUNT ##############################
 
-### 46. WARNING: deletes this account and ALL its meetings, summaries, decisions and action items.
+### 49. WARNING: deletes this account and ALL its meetings, summaries, decisions and action items.
 ### The Firebase login stays, so signing in again starts an empty account. Keep this last. Expect 204.
 DELETE {{baseUrl}}/api/users/me
 Authorization: Bearer {{token}}
