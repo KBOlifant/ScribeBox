@@ -47,10 +47,11 @@ export async function getUser(request: Request): Promise<User> {
     throw new ApiError(401, "Invalid token");
   }
 
-  // Save the user in the database (or update them if they already exist)
+  // Save the user in the database (or update their email if they already exist).
+  // A name they saved with PATCH /api/users/me wins over the name in the token
   const rows = await query<User>(
     `insert into users (id, email, name) values ($1, $2, $3)
-     on conflict (id) do update set email = excluded.email, name = coalesce(excluded.name, users.name)
+     on conflict (id) do update set email = excluded.email, name = coalesce(users.name, excluded.name)
      returning id, email, name, created_at`,
     [id, email, name],
   );
