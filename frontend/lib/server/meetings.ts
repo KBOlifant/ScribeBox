@@ -13,6 +13,9 @@ export const MEETING_COLUMNS = `id, title, meeting_date::text as date, source_ki
 export const SUMMARY_COLUMNS = `s.id, s.meeting_id, s.model_name, s.analysis_state, s.summary_text,
   s.created_at, s.updated_at`;
 
+// Columns we send back for a decision. Queries alias decisions as d
+export const DECISION_COLUMNS = `d.id, d.meeting_id, d.decision_text, d.created_at`;
+
 // Checks the meeting exists and belongs to the user, for routes that work on its summaries,
 // decisions or action items. Throws 404 otherwise, so other users' meetings stay hidden
 export async function requireMeeting(meetingId: string, userId: string) {
