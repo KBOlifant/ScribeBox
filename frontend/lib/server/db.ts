@@ -13,8 +13,21 @@ function getPool() {
   return globalForDb.pool;
 }
 
-// Runs a query and returns the rows. Always pass values in params (never put them in the SQL string)
+// Connecting to the hosted database sometimes stalls. Only errors that mean the query was never
+// sent count, so retrying can't run a write twice
+function isConnectionError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  return /timeout exceeded when trying to connect|ECONNREFUSED|ENOTFOUND|EAI_AGAIN/i.test(message);
+}
+
+// Runs a query and returns the rows. Always pass values in params (never put them in the SQL string).
+// If the connection fails before the query runs, it tries once more
 export async function query<T extends QueryResultRow = QueryResultRow>(sql: string, params: unknown[] = []) {
-  const result = await getPool().query<T>(sql, params);
-  return result.rows;
+  try {
+    return (await getPool().query<T>(sql, params)).rows;
+  } catch (error) {
+    if (!isConnectionError(error)) throw error;
+    console.log("Database connection failed, retrying once:", (error as Error).message);
+    return (await getPool().query<T>(sql, params)).rows;
+  }
 }

@@ -25,5 +25,8 @@ export function poolConfig() {
     connectionString: url.toString(),
     ssl: { ca: ca, rejectUnauthorized: true },
     max: 5,
+    // Fail instead of waiting forever when the database is out of connections or a query is stuck
+    connectionTimeoutMillis: 30_000,
+    query_timeout: 60_000,
   };
 }
