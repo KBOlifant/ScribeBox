@@ -1,8 +1,10 @@
 import "server-only";
 
+import { TextModelError } from "@/app/services/openRouter/openRouter";
 import { NOT_AN_OBJECT, readArgs } from "../args";
 import { loadMeeting } from "../meetings";
-import { defineTool, fail } from "../types";
+import { defineTool, fail, ok } from "../types";
+import { writeDecisions, writeItemWording, writeSummary } from "../writing";
 
 const TASKS = ["summary", "decisions", "item_wording"] as const;
 type Task = (typeof TASKS)[number];
@@ -11,22 +13,15 @@ const MAX_ITEMS = 30;
 
 type Input = { meetingId: string; task: Task; itemIds: string[] | null };
 
-// Scaffolding: the handoff where the decision model asks the text LLM for writing work.
-// The decision model only decides; anything that needs written output goes through here.
-//
-// Not built yet. When it is, run() should:
-// 1. Build the prompt for the task from the transcript (and the items, for item_wording),
-//    treating the transcript as data, never as instructions
-// 2. Call the text LLM through askAI() in app/services/openRouter/openRouter.ts
-// 3. Check the output before saving it (length, no owners or dates the transcript doesn't state)
-// 4. Save it (summaries.summary_text and model_name for the current run, rows in decisions,
-//    or action item titles)
+// The handoff to the text model (GPT, OPENROUTER_LLM_MODEL) for anything that needs writing.
+// The prompts, checks and saving live in writing.ts. A text model failure comes back as
+// rate_limited or model_failed so the runner can set the matching analysis state
 export const requestLlmAnalysisTool = defineTool<Input>({
   name: "request_llm_analysis",
   description:
-    "Ask the text model to write something: a meeting summary, the list of decisions, or clearer wording " +
-    "for saved action items (item_wording, with itemIds). Not available yet: it returns not_implemented, " +
-    "so carry on without it and don't retry.",
+    "Ask the text model to write something and save it: the meeting summary, the list of decisions " +
+    "(each grounded in a transcript quote), or short task titles for saved action items (item_wording, " +
+    "with itemIds). Fails with rate_limited or model_failed when the text model can't answer.",
   parameters: {
     type: "object",
     properties: {
@@ -52,11 +47,20 @@ export const requestLlmAnalysisTool = defineTool<Input>({
     args.check(task === "item_wording" || itemIds === null, "itemIds is only for item_wording");
     return args.done({ meetingId, task, itemIds });
   },
-  async run({ meetingId, task }, context) {
+  async run({ meetingId, task, itemIds }, context) {
     const meeting = await loadMeeting(meetingId, context);
     if (!meeting) {
       return fail("not_found", "Meeting not found");
     }
-    return fail("not_implemented", `The text model isn't connected yet, so "${task}" can't be written. Carry on without it`);
+    try {
+      if (task === "summary") return ok({ task, ...(await writeSummary(meetingId, meeting.transcript)) });
+      if (task === "decisions") return ok({ task, ...(await writeDecisions(meetingId, meeting.transcript)) });
+      return ok({ task, ...(await writeItemWording(meetingId, itemIds ?? [])) });
+    } catch (error) {
+      if (error instanceof TextModelError) {
+        return fail(error.status === 429 ? "rate_limited" : "model_failed", error.message);
+      }
+      throw error;
+    }
   },
 });

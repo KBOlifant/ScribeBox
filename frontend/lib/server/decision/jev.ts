@@ -8,10 +8,10 @@ const TIMEOUT_MS = 30_000;
 
 export const DEFAULT_DECISION_MODEL = "typesafe/jev-1.14";
 
-// The decision model's OpenRouter id. Set OPENROUTER_DECISION_MODEL in .env to change it.
-// OPENROUTER_MODEL stays the text model for summaries, since Jev can't write text
+// The decision model's OpenRouter id, from OPENROUTER_MODEL in .env. Jev can't write text,
+// so the text model is set separately in OPENROUTER_LLM_MODEL
 export function decisionModelId(): string {
-  return process.env.OPENROUTER_DECISION_MODEL?.trim() || DEFAULT_DECISION_MODEL;
+  return process.env.OPENROUTER_MODEL?.trim() || DEFAULT_DECISION_MODEL;
 }
 
 // A yes/no question. The answer's noul is the probability of "true", from 0 to 1

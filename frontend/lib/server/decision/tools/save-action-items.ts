@@ -97,7 +97,7 @@ export const saveActionItemsTool = defineTool<{ meetingId: string; items: ItemIn
     "from (quote). Only give an owner the transcript names and an actionDate the quoted line states " +
     "(YYYY-MM-DD); don't turn \"by Friday\" into a date. Unsupported owners and dates are removed and the " +
     "item is flagged for review. Items whose quote isn't in the transcript are rejected. " +
-    "Items with a title already saved for this meeting are skipped.",
+    "Items whose title or quote is already saved for this meeting are skipped.",
   parameters: {
     type: "object",
     properties: {
@@ -174,7 +174,10 @@ export const saveActionItemsTool = defineTool<{ meetingId: string; items: ItemIn
              due_note text, transcript_quote text, cue_time text
            )
            where not exists (
-             select 1 from action_items a where a.meeting_id = $1 and lower(a.title) = lower(x.title)
+             select 1 from action_items a
+             where a.meeting_id = $1
+               -- same title, or same quote (the title may have been reworded since)
+               and (lower(a.title) = lower(x.title) or a.transcript_quote = x.transcript_quote)
            )
            returning id, title, owner, owner_note, action_date::text, due_note, cue_time`,
           [meetingId, JSON.stringify(rows)],

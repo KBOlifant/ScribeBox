@@ -8,8 +8,9 @@ import { parseTranscript, type TranscriptCheck, type TranscriptLine } from "./tr
 import type { ToolContext, ToolResult } from "./types";
 
 // How ScribeBox analyses one meeting. Our code runs the steps and calls the tools; the decision
-// model (Jev) answers yes/no questions at each decision point. It never writes text and never
-// calls tools itself, so it can't save anything the tools' own checks wouldn't allow
+// model (Jev) answers yes/no questions at each decision point, and the text model (GPT) writes the
+// summary, decisions and task titles. Neither calls tools itself, so nothing gets saved that the
+// tools' own checks wouldn't allow
 
 const MAX_CANDIDATES = 25;
 const PARALLEL_REQUESTS = 4;
@@ -38,11 +39,46 @@ export type DecisionTrace = {
   error?: string;
 };
 
+// The text model couldn't write the summary or decisions, as reported by request_llm_analysis
+class TextModelFailure extends Error {
+  constructor(
+    public code: "rate_limited" | "model_failed",
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 type Judged = {
   candidate: ActionCandidate;
   isAction: Verdict;
   owner: Verdict | null; // null when the transcript names no owner for the line
 };
+
+const EXCHANGE_LINES = 2;
+
+// An ask and its answer ("Ben, can you send the deck by 15 March?" / "Yes, I'll send it") are one
+// task, not two. When accepted lines within a couple of lines of each other share an owner (or one
+// has none), keep only the more useful one: the one with a date, else the longer quote
+// Distance is counted in spoken lines, not file lines, since captions put timing lines in between
+function mergeExchanges(accepted: Judged[], lines: TranscriptLine[]): Judged[] {
+  const position = new Map(lines.map((line, index) => [line.lineNumber, index]));
+  const spoken = (item: Judged) => position.get(item.candidate.lineNumber) ?? item.candidate.lineNumber;
+  const kept: Judged[] = [];
+  const score = (item: Judged) => (item.candidate.dueHint.date ? 1000 : 0) + item.candidate.quote.length;
+  for (const item of [...accepted].sort((a, b) => spoken(a) - spoken(b))) {
+    const previous = kept[kept.length - 1];
+    const owner = item.candidate.ownerHint?.name ?? null;
+    const previousOwner = previous?.candidate.ownerHint?.name ?? null;
+    const sameTask =
+      previous &&
+      spoken(item) - spoken(previous) <= EXCHANGE_LINES &&
+      (owner === previousOwner || owner === null || previousOwner === null);
+    if (!sameTask) kept.push(item);
+    else if (score(item) > score(previous)) kept[kept.length - 1] = item;
+  }
+  return kept;
+}
 
 // Runs fn over the items with at most `limit` running at once, keeping the order
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -80,10 +116,11 @@ function actionQuestions(candidate: ActionCandidate): Record<string, YesNoQuesti
       type: "noul",
       instructions:
         "Look at the line marked >. Does it commit a person or the team to do a concrete task after the " +
-        `meeting (an action item)? ${DATA_RULE}`,
+        "meeting (an action item)? A request that someone accepts in the next lines (\"Can you do X by " +
+        `Friday?\" answered \"Yes\") counts. ${DATA_RULE}`,
       criteria: {
-        true: "It is a commitment or an assigned task to do later",
-        false: "It is a greeting, opinion, question, past work or general discussion",
+        true: "It is a commitment, a task assigned to someone who accepts it, or a task that needs doing even if nobody is named",
+        false: "It is a greeting, opinion, open question, past work, general discussion, or something the group chose not to do yet",
       },
     },
   };
@@ -138,6 +175,7 @@ export async function runDecision(options: { userId: string; meetingId: string }
     return finish("not_allowed", working.error.message);
   }
 
+  let savedIds: string[] = [];
   try {
     // 2. Can the transcript be analysed? The checks decide clear cases; Jev decides the unclear ones
     const check = await tool("check_transcript", { meetingId });
@@ -177,7 +215,10 @@ export async function runDecision(options: { userId: string; meetingId: string }
 
     // 4. Save the lines Jev is sure are action items. Unsure lines are left out rather than guessed.
     // An owner Jev rejects is dropped (save_action_items then notes the owner is missing)
-    const accepted = judged.filter((item) => item.isAction === "yes");
+    const accepted = mergeExchanges(
+      judged.filter((item) => item.isAction === "yes"),
+      lines,
+    );
     if (accepted.length) {
       const items = accepted.map(({ candidate, owner }) => {
         const item: Record<string, string> = { title: candidate.quote, quote: candidate.quote };
@@ -191,6 +232,7 @@ export async function runDecision(options: { userId: string; meetingId: string }
 
       // 5. Flag items whose owner Jev couldn't confirm either way
       const savedRows = (saved.data as { saved: { id: string; title: string }[] }).saved;
+      savedIds = savedRows.map((row) => row.id);
       for (const { candidate, owner } of accepted) {
         if (owner !== "unsure" || !candidate.ownerHint) continue;
         const row = savedRows.find((saved) => saved.title === candidate.quote);
@@ -202,9 +244,19 @@ export async function runDecision(options: { userId: string; meetingId: string }
       }
     }
 
-    // 6. Hand the writing work to the text model. Not connected yet, so the run carries on without it
-    await tool("request_llm_analysis", { meetingId, task: "summary" });
-    await tool("request_llm_analysis", { meetingId, task: "decisions" });
+    // 6. Hand the writing to the text model (GPT). Rewording titles is a nice-to-have: if it fails the
+    // items keep their transcript quotes. The summary and decisions are needed, so a failure ends the run
+    if (savedIds.length) {
+      await tool("request_llm_analysis", { meetingId, task: "item_wording", itemIds: savedIds });
+    }
+    for (const task of ["summary", "decisions"]) {
+      const written = await tool("request_llm_analysis", { meetingId, task });
+      if (!written.ok) {
+        const { code, message } = written.error;
+        if (code === "rate_limited" || code === "model_failed") throw new TextModelFailure(code, message);
+        throw new Error(message);
+      }
+    }
 
     await tool("set_analysis_state", { meetingId, state: "done" });
     return finish("done");
@@ -212,6 +264,10 @@ export async function runDecision(options: { userId: string; meetingId: string }
     // The run is "working" here, so it can move to rate_limited or failed for the user to retry
     if (error instanceof DecisionModelError) {
       await tool("set_analysis_state", { meetingId, state: error.status === 429 ? "rate_limited" : "failed" });
+      return finish("model_error", error.message);
+    }
+    if (error instanceof TextModelFailure) {
+      await tool("set_analysis_state", { meetingId, state: error.code === "rate_limited" ? "rate_limited" : "failed" });
       return finish("model_error", error.message);
     }
     console.log("Decision run failed:", error);

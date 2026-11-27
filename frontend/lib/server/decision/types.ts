@@ -5,7 +5,15 @@ export type ToolContext = {
   userId: string;
 };
 
-export type ToolErrorCode = "invalid_input" | "not_found" | "not_allowed" | "not_implemented" | "internal";
+// rate_limited and model_failed come from the text model, so the runner can set the matching analysis state
+export type ToolErrorCode =
+  | "invalid_input"
+  | "not_found"
+  | "not_allowed"
+  | "not_implemented"
+  | "rate_limited"
+  | "model_failed"
+  | "internal";
 
 // What every tool gives back. Errors are results too, so the model can read them and decide what to do next
 export type ToolResult =
