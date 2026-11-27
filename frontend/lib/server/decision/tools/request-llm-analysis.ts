@@ -19,8 +19,8 @@ type Input = { meetingId: string; task: Task; itemIds: string[] | null };
 //    treating the transcript as data, never as instructions
 // 2. Call the text LLM through askAI() in app/services/openRouter/openRouter.ts
 // 3. Check the output before saving it (length, no owners or dates the transcript doesn't state)
-// 4. Save it (meetings.summary, decisions, or action item titles) and record the model
-//    in summaries.model_name for the current run
+// 4. Save it (summaries.summary_text and model_name for the current run, rows in decisions,
+//    or action item titles)
 export const requestLlmAnalysisTool = defineTool<Input>({
   name: "request_llm_analysis",
   description:

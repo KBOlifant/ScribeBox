@@ -1,24 +1,10 @@
 import "server-only";
 
+import { ANALYSIS_STATES as STATES, canMoveTo, type AnalysisStateName as State } from "../../analysis";
 import { query } from "../../db";
 import { NOT_AN_OBJECT, readArgs } from "../args";
 import { loadMeeting } from "../meetings";
 import { defineTool, fail, ok } from "../types";
-
-const STATES = ["queued", "working", "done", "failed", "rate_limited", "invalid"] as const;
-type State = (typeof STATES)[number];
-
-// Which states each state may move to. "none" means the meeting has no analysis run yet.
-// invalid is final: the transcript can't be edited, so analysing it again won't help
-const ALLOWED: Record<State | "none", State[]> = {
-  none: ["queued", "working", "invalid"],
-  queued: ["working", "invalid"],
-  working: ["done", "failed", "rate_limited", "invalid"],
-  done: ["queued"],
-  failed: ["queued"],
-  rate_limited: ["queued"],
-  invalid: [],
-};
 
 type Run = { id: string; analysis_state: State };
 
@@ -61,7 +47,7 @@ export const setAnalysisStateTool = defineTool<{ meetingId: string; state: State
     if (from === state) {
       return ok({ meetingId, runId: latest?.id ?? null, from, to: state, changed: false });
     }
-    if (!ALLOWED[from].includes(state)) {
+    if (!canMoveTo(from, state)) {
       return fail("not_allowed", `Can't move from ${from} to ${state}`);
     }
 

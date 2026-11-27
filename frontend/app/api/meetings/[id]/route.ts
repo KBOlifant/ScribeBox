@@ -1,22 +1,15 @@
-import { ANALYSIS_STATE_SQL } from "@/lib/server/analysis";
 import { getUser } from "@/lib/server/auth";
 import { query } from "@/lib/server/db";
-import { ApiError, errorResponse, getBody } from "@/lib/server/http";
+import { ApiError, checkId as checkUuid, errorResponse, getBody } from "@/lib/server/http";
+import { MEETING_COLUMNS } from "@/lib/server/meetings";
 import { hasErrors, meetingDateError, meetingTitleError } from "@/lib/validation";
 
 type Params = { params: Promise<{ id: string }> };
 
-// Columns we send back for a meeting (date as text so it stays YYYY-MM-DD).
-// analysis_state comes from the meeting's newest summaries row
-const columns = `id, title, meeting_date::text as date, source_kind, source_name,
-  ${ANALYSIS_STATE_SQL}, summary, decisions, created_at, updated_at, transcript`;
+const columns = `${MEETING_COLUMNS}, transcript`;
 
-// Meeting ids are UUIDs, so anything else can't exist
 function checkId(id: string) {
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidPattern.test(id)) {
-    throw new ApiError(404, "Meeting not found");
-  }
+  checkUuid(id, "Meeting not found");
 }
 
 // GET /api/meetings/:id - get one meeting (with the transcript)

@@ -12,6 +12,15 @@ export class ApiError extends Error {
   }
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Ids are UUIDs, so anything else can't exist: answer 404 without asking the database
+export function checkId(id: string, notFoundMessage: string) {
+  if (!UUID_PATTERN.test(id)) {
+    throw new ApiError(404, notFoundMessage);
+  }
+}
+
 // Turns an error into a JSON response
 export function errorResponse(error: unknown) {
   if (error instanceof ApiError) {
