@@ -2,12 +2,27 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "description": "ScribeBox: meeting transcripts into summaries, decisions and action items",
+  "author": "KBOlifant",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:migrate": "node --env-file=.env scripts/migrate.mjs"
+    "db:migrate": "node --env-file=.env scripts/migrate.mjs",
+    "electron:dev": "electron . --dev",
+    "electron:pack": "node scripts/electron-build.mjs --dir",
+    "electron:build": "node scripts/electron-build.mjs"
+  },
+  "build": {
+    "appId": "com.scribebox.desktop",
+    "productName": "ScribeBox",
+    "directories": { "output": "dist-electron" },
+    "files": ["electron/**", "package.json"],
+    "extraResources": [{ "from": ".next/standalone", "to": "app-server", "filter": ["**/*"] }],
+    "win": { "target": "nsis" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
   },
   "dependencies": {
     "firebase": "^13.4.0",
