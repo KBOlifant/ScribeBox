@@ -10,6 +10,9 @@
 @firebaseKey = {{$dotenv NEXT_PUBLIC_FIREBASE_API_KEY}}
 @token = {{login.response.body.idToken}}
 @meetingId = {{createMeeting.response.body.meeting.id}}
+@summaryId = {{createSummary.response.body.summary.id}}
+@decisionId = {{createDecision.response.body.decision.id}}
+@actionItemId = {{createActionItem.response.body.actionItem.id}}
 
 
 ############################## AUTH ##############################
@@ -43,9 +46,34 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/api/auth/me
 
 
+############################## USERS ##############################
+
+### 4. Get my account. Expect 200.
+GET {{baseUrl}}/api/users/me
+Authorization: Bearer {{token}}
+
+### 5. Change my name. Expect 200.
+PATCH {{baseUrl}}/api/users/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Test User"
+}
+
+### 6. Try to change the email. It comes from Firebase. Expect 422.
+PATCH {{baseUrl}}/api/users/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "email": "other@example.com"
+}
+
+
 ############################## MEETINGS ##############################
 
-### 4. Create a meeting. Expect 201.
+### 7. Create a meeting. Expect 201.
 # @name createMeeting
 POST {{baseUrl}}/api/meetings
 Authorization: Bearer {{token}}
@@ -58,7 +86,7 @@ Content-Type: application/json
   "transcript": "[00:00] Ana: Morning all.\n[00:12] Ben: I'll send the pricing deck by Friday.\n[00:40] Ana: Great, let's ship the beta next week."
 }
 
-### 5. Create with bad input. Expect 422 with a message per field.
+### 8. Create with bad input. Expect 422 with a message per field.
 POST {{baseUrl}}/api/meetings
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -69,15 +97,15 @@ Content-Type: application/json
   "transcript": "   "
 }
 
-### 6. List my meetings (no transcripts). Expect 200.
+### 9. List my meetings (no transcripts). Expect 200.
 GET {{baseUrl}}/api/meetings
 Authorization: Bearer {{token}}
 
-### 7. Get the meeting from step 4, with its transcript. Expect 200.
+### 10. Get the meeting from step 7, with its transcript. Expect 200.
 GET {{baseUrl}}/api/meetings/{{meetingId}}
 Authorization: Bearer {{token}}
 
-### 8. Rename it. Expect 200.
+### 11. Rename it. Expect 200.
 PATCH {{baseUrl}}/api/meetings/{{meetingId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -86,7 +114,7 @@ Content-Type: application/json
   "title": "Weekly product sync (renamed)"
 }
 
-### 9. Try to change the transcript. Expect 422.
+### 12. Try to change the transcript. Expect 422.
 PATCH {{baseUrl}}/api/meetings/{{meetingId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -95,10 +123,244 @@ Content-Type: application/json
   "transcript": "edited"
 }
 
-### 10. Delete it. Expect 204.
+
+############################## SUMMARIES ##############################
+### Analysis runs of the meeting from step 7. States: queued, working, done, failed, rate_limited, invalid.
+
+### 13. Start an analysis run. The body is optional. Expect 201, state "queued".
+# @name createSummary
+POST {{baseUrl}}/api/meetings/{{meetingId}}/summaries
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "modelName": "test-model"
+}
+
+### 14. Start a second run while the first is still queued. Expect 409.
+POST {{baseUrl}}/api/meetings/{{meetingId}}/summaries
+Authorization: Bearer {{token}}
+
+### 15. List the meeting's runs, newest first. Expect 200.
+GET {{baseUrl}}/api/meetings/{{meetingId}}/summaries
+Authorization: Bearer {{token}}
+
+### 16. Get the run from step 13. Expect 200.
+GET {{baseUrl}}/api/summaries/{{summaryId}}
+Authorization: Bearer {{token}}
+
+### 17. Edit the summary text and model name. Expect 200.
+PATCH {{baseUrl}}/api/summaries/{{summaryId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "summaryText": "Ben will send the pricing deck by Friday. The beta ships next week.",
+  "modelName": "test-model-2"
+}
+
+### 18. Move queued to working. Expect 200.
+PATCH {{baseUrl}}/api/summaries/{{summaryId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "analysisState": "working"
+}
+
+### 19. Move back to queued. Use step 13 for a new run instead. Expect 409.
+PATCH {{baseUrl}}/api/summaries/{{summaryId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "analysisState": "queued"
+}
+
+### 20. Move working to done. Expect 200.
+PATCH {{baseUrl}}/api/summaries/{{summaryId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "analysisState": "done"
+}
+
+### 21. Id that is not a UUID. Expect 404.
+GET {{baseUrl}}/api/summaries/not-a-uuid
+Authorization: Bearer {{token}}
+
+### 22. Delete the run. Expect 204.
+DELETE {{baseUrl}}/api/summaries/{{summaryId}}
+Authorization: Bearer {{token}}
+
+
+############################## DECISIONS ##############################
+
+### 23. Add a decision to the meeting. Expect 201.
+# @name createDecision
+POST {{baseUrl}}/api/meetings/{{meetingId}}/decisions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "decisionText": "Ship the beta next week."
+}
+
+### 24. Add with empty text. Expect 422.
+POST {{baseUrl}}/api/meetings/{{meetingId}}/decisions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "decisionText": "   "
+}
+
+### 25. List the meeting's decisions. Expect 200.
+GET {{baseUrl}}/api/meetings/{{meetingId}}/decisions
+Authorization: Bearer {{token}}
+
+### 26. Get the decision from step 23. Expect 200.
+GET {{baseUrl}}/api/decisions/{{decisionId}}
+Authorization: Bearer {{token}}
+
+### 27. Reword it. Expect 200.
+PATCH {{baseUrl}}/api/decisions/{{decisionId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "decisionText": "Ship the beta on Monday."
+}
+
+### 28. Empty PATCH body. Expect 400 "Send at least one field to update".
+PATCH {{baseUrl}}/api/decisions/{{decisionId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### 29. Try to change the meeting. Expect 422 "This field can't be set here."
+PATCH {{baseUrl}}/api/decisions/{{decisionId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "meetingId": "{{meetingId}}"
+}
+
+### 30. Delete the decision. Expect 204.
+DELETE {{baseUrl}}/api/decisions/{{decisionId}}
+Authorization: Bearer {{token}}
+
+### 31. Get it again. Expect 404.
+GET {{baseUrl}}/api/decisions/{{decisionId}}
+Authorization: Bearer {{token}}
+
+
+############################## ACTION ITEMS ##############################
+### progressState is one of: todo, in_progress, done. Only title is required when creating.
+
+### 32. Add an action item with every field. Expect 201.
+# @name createActionItem
+POST {{baseUrl}}/api/meetings/{{meetingId}}/action-items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Send the pricing deck",
+  "owner": "Ben",
+  "ownerNote": "Said so in the call",
+  "actionDate": "2026-11-27",
+  "dueNote": "by Friday",
+  "transcriptQuote": "I'll send the pricing deck by Friday.",
+  "cueTime": "00:12",
+  "progressState": "todo"
+}
+
+### 33. Add one with only a title. Expect 201.
+POST {{baseUrl}}/api/meetings/{{meetingId}}/action-items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Plan the beta launch"
+}
+
+### 34. Add with a missing title, a bad date and an unknown field. Expect 422 with a message per field.
+POST {{baseUrl}}/api/meetings/{{meetingId}}/action-items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "actionDate": "2026-02-30",
+  "priority": "high"
+}
+
+### 35. List the meeting's action items. Expect 200.
+GET {{baseUrl}}/api/meetings/{{meetingId}}/action-items
+Authorization: Bearer {{token}}
+
+### 36. List all my action items, across meetings. Expect 200.
+GET {{baseUrl}}/api/action-items
+Authorization: Bearer {{token}}
+
+### 37. Only the ones still to do. Expect 200.
+GET {{baseUrl}}/api/action-items?progressState=todo
+Authorization: Bearer {{token}}
+
+### 38. Bad filter value. Expect 400.
+GET {{baseUrl}}/api/action-items?progressState=started
+Authorization: Bearer {{token}}
+
+### 39. Get the action item from step 32. Expect 200.
+GET {{baseUrl}}/api/action-items/{{actionItemId}}
+Authorization: Bearer {{token}}
+
+### 40. Mark it in progress. Expect 200.
+PATCH {{baseUrl}}/api/action-items/{{actionItemId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "progressState": "in_progress"
+}
+
+### 41. Clear the optional fields with null. Expect 200.
+PATCH {{baseUrl}}/api/action-items/{{actionItemId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ownerNote": null,
+  "actionDate": null,
+  "dueNote": null
+}
+
+### 42. Id that is not a UUID. Expect 404.
+GET {{baseUrl}}/api/action-items/not-a-uuid
+Authorization: Bearer {{token}}
+
+### 43. Delete the action item. Expect 204.
+DELETE {{baseUrl}}/api/action-items/{{actionItemId}}
+Authorization: Bearer {{token}}
+
+
+############################## CLEAN UP ##############################
+### Deleting the meeting also deletes its summaries, decisions and action items (step 33 included).
+
+### 44. Delete the meeting. Expect 204.
 DELETE {{baseUrl}}/api/meetings/{{meetingId}}
 Authorization: Bearer {{token}}
 
-### 11. Get it again. Expect 404.
+### 45. Get it again. Expect 404.
 GET {{baseUrl}}/api/meetings/{{meetingId}}
+Authorization: Bearer {{token}}
+
+
+############################## DELETE ACCOUNT ##############################
+
+### 46. WARNING: deletes this account and ALL its meetings, summaries, decisions and action items.
+### The Firebase login stays, so signing in again starts an empty account. Keep this last. Expect 204.
+DELETE {{baseUrl}}/api/users/me
 Authorization: Bearer {{token}}
