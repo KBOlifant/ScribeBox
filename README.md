@@ -2,7 +2,6 @@
 
 ScribeBox turns a meeting transcript into a summary, the decisions made, and action items with owners and due dates, each traced back to the line it came from. It never invents an owner or a date: anything the transcript doesn't state is flagged for review instead.
 
-
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
@@ -10,6 +9,7 @@ ScribeBox turns a meeting transcript into a summary, the decisions made, and act
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Aiven-4169E1?logo=postgresql&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?logo=firebase&logoColor=black)
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-Jev_%2B_GPT-6467F2)
+![Electron](https://img.shields.io/badge/Electron-desktop-47848F?logo=electron&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-22.7%2B-339933?logo=nodedotjs&logoColor=white)
 
 ## Getting started
@@ -45,6 +45,18 @@ Create `frontend/.env`:
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` | No | `G-XXXXXXXXXX` |
 | `TEST_USER_EMAIL` | Only for `api.http` | `you+test@example.com` |
 | `TEST_USER_PASSWORD` | Only for `api.http` | `a-long-test-password` |
+
+## Desktop app
+
+ScribeBox also builds as an Electron app for Windows. It runs the bundled Next.js server on `127.0.0.1:47823` (a fixed port, so Firebase keeps you signed in). With `--dev` it loads a running `next dev` at `localhost:3000` instead. From `frontend/`:
+
+```bash
+npm run electron:dev     # with `npm run dev` running in another terminal
+npm run electron:pack    # unpacked app, faster
+npm run electron:build   # installer in dist-electron/
+```
+
+The build copies the static assets, `public/`, `certs/` and `.env` into the bundle. The installer therefore contains your database and OpenRouter credentials, so only share it with people who may have them.
 
 ## How the analysis works
 
