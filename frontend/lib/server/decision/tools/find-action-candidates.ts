@@ -43,6 +43,6 @@ export const findActionCandidatesTool = defineTool<{ meetingId: string; limit: n
     if (!meeting) {
       return fail("not_found", "Meeting not found");
     }
-    return ok(findActionCandidates(meeting.transcript, limit));
+    return ok(findActionCandidates(meeting.transcript, limit, meeting.date));
   },
 });

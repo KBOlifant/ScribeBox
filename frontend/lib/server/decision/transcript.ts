@@ -15,8 +15,18 @@ const VTT_TIMING = /^((?:\d{1,2}:)?\d{2}:\d{2})[.,]\d{3}\s*-->/;
 const CUE = /^\[?((?:\d{1,2}:)?\d{1,2}:\d{2})(?:[.,]\d+)?\]?\s*/;
 // "<v Ana>Morning all</v>" (a WebVTT voice tag)
 const VOICE = /^<v\s+([^>]{1,60})>(.*?)(?:<\/v>)?$/i;
-// "Ana: Morning all" or "Ben Smith: I'll send it"
-const SPEAKER = /^([A-Z][\w'.-]*(?: [A-Z][\w'.-]*){0,3}):\s+(.+)$/;
+// "Ana: Morning all", "Johan van Wyk: I'll send it" or Markdown "**Naomi Botha:** Thanks"
+const NAME_PARTICLE = "(?:van|von|de|der|den|du|da|di|le|la|dos|del|bin|ibn)";
+const SPEAKER = new RegExp(
+  `^(?:\\*\\*|__)?([A-Z][\\w'.-]*(?:\\s+(?:${NAME_PARTICLE}\\s+)*[A-Z][\\w'.-]*){0,3})(?::\\*\\*|\\*\\*:|:__|__:|:)\\s+(.+)$`,
+);
+// Header lines such as "Title: …" or "Kind: captions" describe the meeting; nobody says them
+const METADATA_LABELS = new Set([
+  "title", "date", "time", "attendees", "attendee", "participants", "presenter", "organizer",
+  "location", "agenda", "subject", "duration", "recorded", "kind", "language", "meeting",
+]);
+// Labels that start a spoken line but aren't people, e.g. "Decision: we ship Friday"
+const NOT_SPEAKERS = new Set(["decision", "decisions", "note", "action", "action item", "todo", "update", "next steps"]);
 
 export function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -36,6 +46,8 @@ export function normalizeText(text: string): string {
 export function parseTranscript(transcript: string): TranscriptLine[] {
   const result: TranscriptLine[] = [];
   let vttTimestamp: string | null = null;
+  // Captions often spell a name differently ("Lerato M", "lerato m"): keep the first spelling
+  const spellings = new Map<string, string>();
 
   transcript.split(/\r?\n/).forEach((rawLine, index) => {
     let line = rawLine.trim();
@@ -64,8 +76,14 @@ export function parseTranscript(transcript: string): TranscriptLine[] {
     const voice = VOICE.exec(line);
     const named = voice ?? SPEAKER.exec(line);
     if (named) {
-      speaker = named[1].trim();
-      line = named[2].trim();
+      const label = named[1].trim();
+      const key = label.toLowerCase().replace(/\s+/g, " ");
+      if (!voice && METADATA_LABELS.has(key)) return;
+      if (voice || !NOT_SPEAKERS.has(key)) {
+        if (!spellings.has(key)) spellings.set(key, label);
+        speaker = spellings.get(key) ?? label;
+        line = named[2].trim();
+      }
     }
 
     if (line) {
