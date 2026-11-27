@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { AuthGate } from "@/components/auth-gate";
 
@@ -12,7 +12,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <AppHeader />
+      {/* The header reads the URL (usePathname), which Next.js needs inside a Suspense boundary */}
+      <Suspense fallback={<div aria-hidden="true" className="h-[112px] bg-chrome shadow-chrome sm:h-[68px]" />}>
+        <AppHeader />
+      </Suspense>
       <main id="main" className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-8 sm:px-6 sm:py-12">
         {children}
       </main>

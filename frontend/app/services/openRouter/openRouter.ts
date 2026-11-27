@@ -7,8 +7,20 @@ import OpenAI from "openai";
 export const DEFAULT_TEXT_MODEL = "openai/gpt-4o-mini";
 const TIMEOUT_MS = 60_000;
 
+let warnedAboutBatch = false;
+
 export function textModelId(): string {
-  return process.env.OPENROUTER_LLM_MODEL?.trim() || DEFAULT_TEXT_MODEL;
+  const configured = process.env.OPENROUTER_LLM_MODEL?.trim() || DEFAULT_TEXT_MODEL;
+  // OpenRouter's ":batch" variants only work with its batch API, never with chat completions,
+  // so "openai/gpt-4o-mini:batch" would fail every call. Use the same model without the suffix
+  if (configured.endsWith(":batch")) {
+    if (!warnedAboutBatch) {
+      console.log(`OPENROUTER_LLM_MODEL is "${configured}"; ":batch" models can't chat, so using it without ":batch"`);
+      warnedAboutBatch = true;
+    }
+    return configured.slice(0, -":batch".length);
+  }
+  return configured;
 }
 
 // A failed call to the text model. status is the HTTP status (429 = rate limited), or 0 if there was none
