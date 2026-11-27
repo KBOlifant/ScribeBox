@@ -27,11 +27,19 @@ export function canStartNewRun(latest: AnalysisStateName | "none"): boolean {
 // SQL for a meeting's current analysis state: the state of its newest summaries row.
 // A meeting with no analysis run yet counts as queued. Use inside a query on the meetings table
 export const ANALYSIS_STATE_SQL = `coalesce(
-    (select s.analysis_state from summaries s where s.meeting_id = meetings.id order by s.created_at desc limit 1),
+    (select s.analysis_state from summaries s where s.meeting_id = meetings.id order by s.created_at desc, s.id desc limit 1),
     'queued'
   ) as analysis_state`;
 
 // SQL for a meeting's current summary: the text of its newest summaries row that has one
 export const SUMMARY_TEXT_SQL = `(select s.summary_text from summaries s
     where s.meeting_id = meetings.id and s.summary_text is not null
-    order by s.created_at desc limit 1) as summary`;
+    order by s.created_at desc, s.id desc limit 1) as summary`;
+
+// Postgres error code for a unique index violation. summaries_one_active_idx raises it when a
+// second run would start while one is queued or working
+export const UNIQUE_VIOLATION = "23505";
+
+export function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === UNIQUE_VIOLATION;
+}

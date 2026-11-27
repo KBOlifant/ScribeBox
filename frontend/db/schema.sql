@@ -46,6 +46,10 @@ create table if not exists summaries (
 -- Makes finding a meeting's newest run faster
 create index if not exists summaries_meeting_created_idx on summaries (meeting_id, created_at desc);
 
+-- At most one queued or working run per meeting, so two retries at once can't both start a run
+create unique index if not exists summaries_one_active_idx on summaries (meeting_id)
+  where analysis_state in ('queued', 'working');
+
 -- Decisions made in a meeting
 create table if not exists decisions (
   id             uuid primary key default gen_random_uuid(),

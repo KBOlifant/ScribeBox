@@ -1,6 +1,11 @@
 import "server-only";
 
-import { ANALYSIS_STATES as STATES, canMoveTo, type AnalysisStateName as State } from "../../analysis";
+import {
+  ANALYSIS_STATES as STATES,
+  canMoveTo,
+  isUniqueViolation,
+  type AnalysisStateName as State,
+} from "../../analysis";
 import { query } from "../../db";
 import { NOT_AN_OBJECT, readArgs } from "../args";
 import { loadMeeting } from "../meetings";
@@ -38,7 +43,7 @@ export const setAnalysisStateTool = defineTool<{ meetingId: string; state: State
     }
 
     const runs = await query<Run>(
-      `select id, analysis_state from summaries where meeting_id = $1 order by created_at desc limit 1`,
+      `select id, analysis_state from summaries where meeting_id = $1 order by created_at desc, id desc limit 1`,
       [meetingId],
     );
     const latest = runs[0] ?? null;
@@ -53,11 +58,19 @@ export const setAnalysisStateTool = defineTool<{ meetingId: string; state: State
 
     // No run yet, or queuing a finished run again: start a new run
     if (!latest || state === "queued") {
-      const inserted = await query<{ id: string }>(
-        `insert into summaries (meeting_id, analysis_state) values ($1, $2) returning id`,
-        [meetingId, state],
-      );
-      return ok({ meetingId, runId: inserted[0].id, from, to: state, changed: true, newRun: true });
+      try {
+        const inserted = await query<{ id: string }>(
+          `insert into summaries (meeting_id, analysis_state) values ($1, $2) returning id`,
+          [meetingId, state],
+        );
+        return ok({ meetingId, runId: inserted[0].id, from, to: state, changed: true, newRun: true });
+      } catch (error) {
+        // Someone else started a run at the same moment (summaries_one_active_idx)
+        if (isUniqueViolation(error)) {
+          return fail("not_allowed", "Another analysis run started while this ran. Check the state and try again");
+        }
+        throw error;
+      }
     }
 
     // Otherwise update the current run, but only if nobody changed it since we read it

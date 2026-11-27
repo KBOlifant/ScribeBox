@@ -21,7 +21,8 @@ export async function PATCH(request: Request) {
   try {
     const user = await getUser(request);
     const body = new BodyReader(await getBody(request));
-    const name = body.text("name", 80, "Name");
+    // A cleared name would be refilled from the token on the next request, so it can't be cleared
+    const name = body.filledText("name", 80, "Name", false);
     body.done();
 
     const set = updateSet({ name }, 2);

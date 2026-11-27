@@ -28,6 +28,11 @@ export class BodyReader {
       this.errors[key] = `${label} must be text.`;
       return undefined;
     }
+    // Postgres can't store the null character, so it would fail with a 500
+    if (value.includes("\u0000")) {
+      this.errors[key] = `${label} contains a character that can't be saved.`;
+      return undefined;
+    }
     const trimmed = value.trim();
     if (!trimmed) return null;
     if (trimmed.length > max) {
@@ -53,7 +58,8 @@ export class BodyReader {
     const value = this.read(key);
     if (value === undefined || value === null) return value;
     if (value === "") return null;
-    if (typeof value !== "string" || !isValidIsoDate(value)) {
+    // Postgres has no year 0, so it would reject 0000-xx-xx with a 500
+    if (typeof value !== "string" || !isValidIsoDate(value) || value.startsWith("0000")) {
       this.errors[key] = `${label} must be a real date, like 2026-11-27.`;
       return undefined;
     }

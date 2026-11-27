@@ -1,4 +1,4 @@
-import { canStartNewRun, type AnalysisStateName } from "@/lib/server/analysis";
+import { canStartNewRun, isUniqueViolation, type AnalysisStateName } from "@/lib/server/analysis";
 import { getUser } from "@/lib/server/auth";
 import { BodyReader, getOptionalBody } from "@/lib/server/body";
 import { query } from "@/lib/server/db";
@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: Params) {
     body.done();
 
     const latest = await query<{ analysis_state: AnalysisStateName }>(
-      `select analysis_state from summaries where meeting_id = $1 order by created_at desc limit 1`,
+      `select analysis_state from summaries where meeting_id = $1 order by created_at desc, id desc limit 1`,
       [id],
     );
     const state = latest[0]?.analysis_state ?? "none";
@@ -57,6 +57,10 @@ export async function POST(request: Request, { params }: Params) {
 
     return Response.json({ summary: rows[0] }, { status: 201 });
   } catch (error) {
+    // Another request started a run between our check and the insert (summaries_one_active_idx)
+    if (isUniqueViolation(error)) {
+      return errorResponse(new ApiError(409, "The analysis is already queued"));
+    }
     return errorResponse(error);
   }
 }
