@@ -1,0 +1,21 @@
+Title: Sprint 24 Planning - Help Desk Platform
+Date: 2026-11-18
+Attendees: Thandi Nkosi (Product Lead), Ruben Pillay (Backend), Aisha Mohamed (Frontend), Johan van Wyk (QA)
+
+[09:00] Thandi Nkosi: Morning everyone. Three things today: login rate limiting, the ticket export feature, and our release date.
+[09:01] Ruben Pillay: On rate limiting - we saw about 4,000 failed login attempts from one IP range over the weekend. I'd like to limit it to five attempts per minute per account.
+[09:02] Johan van Wyk: Five feels right. Are we going to lock accounts?
+[09:02] Ruben Pillay: No lockouts, just an exponential back-off. Lockouts let attackers lock real users out.
+[09:03] Thandi Nkosi: Agreed. Decision: five attempts per minute, exponential back-off, no account lockouts. Ruben, can you have that done by Monday the 23rd of November?
+[09:03] Ruben Pillay: Yes, Monday the 23rd works.
+[09:04] Thandi Nkosi: Johan, please write the test cases for the rate limiting by Tuesday the 24th.
+[09:04] Johan van Wyk: Will do.
+[09:05] Thandi Nkosi: Next, export. Customers keep asking for a way to get their tickets out.
+[09:06] Aisha Mohamed: I can build the export button and the download flow for CSV. PDF is a lot more work - different library, layout, page breaks.
+[09:07] Thandi Nkosi: Then CSV only for this sprint, and PDF goes to the backlog. That's a decision.
+[09:07] Thandi Nkosi: Aisha, CSV export UI by Friday 27 November?
+[09:08] Aisha Mohamed: Yes, that works.
+[09:08] Ruben Pillay: I'll need to build the export endpoint first. I'll get that to Aisha by Wednesday the 25th.
+[09:09] Thandi Nkosi: Great. Last thing - release. We'll target Tuesday 1 December for v2.4.
+[09:10] Johan van Wyk: I'll prepare the release checklist and share it by Monday 30 November.
+[09:10] Thandi Nkosi: And I'll send the customer release notes on 1 December, the same day as the release. Thanks all.
