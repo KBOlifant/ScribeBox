@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { AnimatePresence } from "motion/react";
+import { Presence } from "@/components/motion";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
@@ -50,11 +52,15 @@ export function LoginForm() {
         <h1 className="text-display">Log in</h1>
         <p className="mt-1 text-ink-muted">Your meetings are where you left them.</p>
       </div>
-      {formError && (
-        <Alert tone="error" title={formError}>
-          Check both and try again.
-        </Alert>
-      )}
+      <AnimatePresence initial={false}>
+        {formError && (
+          <Presence key="form-error">
+            <Alert tone="error" title={formError}>
+              Check both and try again.
+            </Alert>
+          </Presence>
+        )}
+      </AnimatePresence>
       <form noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
         <TextField label="Email address" name="email" type="email" autoComplete="email" error={errors.email} />
         <TextField label="Password" name="password" type="password" autoComplete="current-password" error={errors.password} />

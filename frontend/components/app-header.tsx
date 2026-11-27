@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
+import { motion } from "motion/react";
 import { useState } from "react";
 import { auth } from "@/app/configs/firebaseconfig";
 import { cn } from "@/lib/cn";
+import { springs } from "@/lib/motion-tokens";
 import { useAuth } from "./auth-provider";
 import { Button } from "./ui/button";
 
@@ -47,14 +49,24 @@ export function AppHeader({ openCount }: { openCount: number }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-md px-3.5 text-[16px] font-[550] transition-colors duration-120 ease-out focus-ring",
-                  active ? "bg-chrome-raised text-chrome-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]" : "text-on-chrome-muted hover:bg-chrome-raised hover:text-on-chrome",
+                  "relative inline-flex h-10 items-center whitespace-nowrap rounded-md px-3.5 text-[16px] font-[550] transition-colors duration-120 ease-out focus-ring",
+                  active ? "text-chrome-accent" : "text-on-chrome-muted hover:bg-chrome-raised hover:text-on-chrome",
                 )}
               >
-                {item.label}
-                {item.href === "/action-items" && openCount > 0 && (
-                  <span className="text-[15px] font-semibold text-lilac tabular-nums">{openCount}</span>
+                {active && (
+                  <motion.span
+                    layoutId="nav-active"
+                    aria-hidden="true"
+                    transition={springs.snappy}
+                    className="absolute inset-0 rounded-md bg-chrome-raised shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]"
+                  />
                 )}
+                <span className="relative z-10 inline-flex items-center gap-2">
+                  {item.label}
+                  {item.href === "/action-items" && openCount > 0 && (
+                    <span className="text-[15px] font-semibold text-lilac tabular-nums">{openCount}</span>
+                  )}
+                </span>
               </Link>
             );
           })}

@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { AnimatePresence } from "motion/react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "@/app/configs/firebaseconfig";
+import { Presence } from "@/components/motion";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
@@ -63,7 +65,13 @@ export function RegisterForm() {
         <h1 className="text-display">Create an account</h1>
         <p className="mt-1 text-ink-muted">Your meetings and action items are private to you.</p>
       </div>
-      {formError && <Alert tone="error" title={formError} />}
+      <AnimatePresence initial={false}>
+        {formError && (
+          <Presence key="form-error">
+            <Alert tone="error" title={formError} />
+          </Presence>
+        )}
+      </AnimatePresence>
       <form noValidate onSubmit={onSubmit} className="flex flex-col gap-4">
         <TextField label="Name" name="name" autoComplete="name" error={errors.name} />
         <TextField label="Email address" name="email" type="email" autoComplete="email" error={errors.email} />

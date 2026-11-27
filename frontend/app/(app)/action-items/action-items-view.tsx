@@ -1,17 +1,24 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { Presence } from "@/components/motion";
 import { ActionItemCard } from "@/components/ui/action-item-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar, NO_OWNER, STATUS_FILTERS, type StatusFilter } from "@/components/ui/filter-bar";
+import { useSafeMotion } from "@/hooks/use-reduced-motion";
 import { isOverdue, plural } from "@/lib/format";
+import { motionTokens, springs } from "@/lib/motion-tokens";
 import type { ActionItem } from "@/lib/types";
 
 type Props = { items: ActionItem[]; meetingTitles: Record<string, string>; today: string };
 
 const STATUS_VALUES = STATUS_FILTERS.map(([value]) => value);
+
+/** Cards past this index enter together, so a long list never waits on its stagger. */
+const STAGGER_CAP = 8;
 
 function readStatus(value: string | null): StatusFilter {
   return STATUS_VALUES.includes(value as StatusFilter) ? (value as StatusFilter) : "open";
@@ -21,6 +28,7 @@ export function ActionItemsView({ items: initialItems, meetingTitles, today }: P
   const pathname = usePathname();
   const params = useSearchParams();
   const [items, setItems] = useState(initialItems);
+  const safe = useSafeMotion(motionTokens.distance.sm);
 
   const status = readStatus(params.get("status"));
   const owner = params.get("owner") ?? "";
@@ -89,32 +97,51 @@ export function ActionItemsView({ items: initialItems, meetingTitles, today }: P
       <p className="text-label font-normal text-ink-muted" aria-live="polite">
         {"Showing " + plural(visible.length, "action item")}
       </p>
-      {visible.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {visible.map((item) => (
-            <ActionItemCard
-              key={item.id}
-              item={item}
-              today={today}
-              meeting={{ title: meetingTitles[item.meetingId] ?? "Meeting", href: "/meetings/" + item.meetingId }}
-              onToggle={(done) => update(item.id, { status: done ? "done" : "todo" })}
-              onStatusChange={(value) => update(item.id, { status: value })}
-            />
-          ))}
-        </div>
-      ) : filtered ? (
-        <EmptyState
-          icon="list"
-          title="Nothing matches these filters"
-          action={<Button onClick={() => replaceQuery("")}>Clear filters</Button>}
-        >
-          Try another status or owner, or clear the filters to see everything open.
-        </EmptyState>
-      ) : (
-        <EmptyState icon="check" title="No open action items">
-          Everything from your meetings is done. New items appear here after you analyse a transcript.
-        </EmptyState>
-      )}
+      <AnimatePresence mode="wait">
+        {visible.length > 0 ? (
+          <Presence key="list" className="relative flex flex-col gap-3">
+            {/* popLayout takes leaving cards out of the flow at once, so the rest close the gap. */}
+            <AnimatePresence mode="popLayout">
+              {visible.map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  layout="position"
+                  initial={safe.initial}
+                  animate={{
+                    ...safe.animate,
+                    transition: { ...springs.snappy, delay: Math.min(index, STAGGER_CAP) * motionTokens.stagger.item },
+                  }}
+                  exit={{ ...safe.exit, transition: springs.snappy }}
+                >
+                  <ActionItemCard
+                    item={item}
+                    today={today}
+                    meeting={{ title: meetingTitles[item.meetingId] ?? "Meeting", href: "/meetings/" + item.meetingId }}
+                    onToggle={(done) => update(item.id, { status: done ? "done" : "todo" })}
+                    onStatusChange={(value) => update(item.id, { status: value })}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </Presence>
+        ) : filtered ? (
+          <Presence key="no-match">
+            <EmptyState
+              icon="list"
+              title="Nothing matches these filters"
+              action={<Button onClick={() => replaceQuery("")}>Clear filters</Button>}
+            >
+              Try another status or owner, or clear the filters to see everything open.
+            </EmptyState>
+          </Presence>
+        ) : (
+          <Presence key="none">
+            <EmptyState icon="check" title="No open action items">
+              Everything from your meetings is done. New items appear here after you analyse a transcript.
+            </EmptyState>
+          </Presence>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

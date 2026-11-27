@@ -1,6 +1,12 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { Landing } from "@/components/landing";
 
-// The (app) layout's AuthGate sends signed-out visitors on to /login.
+export const metadata: Metadata = {
+  title: { absolute: "ScribeBox: meeting transcripts to decisions and action items" },
+  description:
+    "Paste or upload a meeting transcript. ScribeBox writes the summary, lists the decisions and tracks every action item, and flags anything the meeting left unclear.",
+};
+
 export default function Home() {
-  redirect("/meetings");
+  return <Landing />;
 }

@@ -110,6 +110,12 @@ const PATHS = {
       <path d="M19 12H5" />
     </>
   ),
+  arrowRight: (
+    <>
+      <path d="m12 5 7 7-7 7" />
+      <path d="M5 12h14" />
+    </>
+  ),
   plus: (
     <>
       <path d="M12 5v14" />

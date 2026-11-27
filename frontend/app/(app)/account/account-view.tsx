@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { EmailAuthProvider, deleteUser, reauthenticateWithCredential } from "firebase/auth";
 import { useState, type FormEvent } from "react";
+import { AnimatePresence } from "motion/react";
 import { useAuth } from "@/components/auth-provider";
+import { Presence } from "@/components/motion";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
@@ -74,42 +76,47 @@ export function AccountView() {
           everyone. This is a soft delete: the records are kept, not erased.
         </p>
 
-        {confirming ? (
-          <form noValidate onSubmit={onDelete} className="mt-6 flex flex-col gap-4">
-            <Alert tone="info" title="Are you sure?">
-              This can’t be undone from inside ScribeBox.
-            </Alert>
-            <TextField
-              label="Your password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              error={error}
-              className="max-w-[400px]"
-            />
-            <div className="flex flex-wrap gap-3">
-              <Button type="submit" variant="danger" loading={deleting}>
-                Delete account
-              </Button>
-              <Button
-                variant="ghost"
-                disabled={deleting}
-                onClick={() => {
-                  setConfirming(false);
-                  setPassword("");
-                  setError(undefined);
-                }}
-              >
-                Keep my account
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <div className="mt-6">
-            <Button onClick={() => setConfirming(true)}>Delete account…</Button>
-          </div>
-        )}
+        {/* The button and the confirmation swap in place: the old one leaves before the new one enters. */}
+        <AnimatePresence mode="wait" initial={false}>
+          {confirming ? (
+            <Presence key="confirm" className="mt-6">
+              <form noValidate onSubmit={onDelete} className="flex flex-col gap-4">
+                <Alert tone="info" title="Are you sure?">
+                  This can’t be undone from inside ScribeBox.
+                </Alert>
+                <TextField
+                  label="Your password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  error={error}
+                  className="max-w-[400px]"
+                />
+                <div className="flex flex-wrap gap-3">
+                  <Button type="submit" variant="danger" loading={deleting}>
+                    Delete account
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={deleting}
+                    onClick={() => {
+                      setConfirming(false);
+                      setPassword("");
+                      setError(undefined);
+                    }}
+                  >
+                    Keep my account
+                  </Button>
+                </div>
+              </form>
+            </Presence>
+          ) : (
+            <Presence key="button" className="mt-6">
+              <Button onClick={() => setConfirming(true)}>Delete account…</Button>
+            </Presence>
+          )}
+        </AnimatePresence>
       </section>
     </div>
   );

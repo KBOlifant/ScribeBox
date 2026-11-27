@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MeetingRow } from "@/components/ui/meeting-row";
@@ -25,30 +26,35 @@ export default function MeetingsPage() {
         }
       />
       {list.length === 0 ? (
-        <EmptyState
-          title="No meetings yet"
-          action={
-            <ButtonLink href="/meetings/new" variant="primary" icon="upload">
-              Add a transcript
-            </ButtonLink>
-          }
-        >
-          Paste a transcript or upload a .txt, .vtt or .md file. You get a summary, decisions and action items.
-        </EmptyState>
+        <Stagger>
+          <StaggerItem>
+            <EmptyState
+              title="No meetings yet"
+              action={
+                <ButtonLink href="/meetings/new" variant="primary" icon="upload">
+                  Add a transcript
+                </ButtonLink>
+              }
+            >
+              Paste a transcript or upload a .txt, .vtt or .md file. You get a summary, decisions and action items.
+            </EmptyState>
+          </StaggerItem>
+        </Stagger>
       ) : (
-        <div className="flex flex-col gap-3">
+        <Stagger className="flex flex-col gap-3">
           {list.map((meeting) => {
             const items = actionItems.filter((item) => item.meetingId === meeting.id);
             return (
-              <MeetingRow
-                key={meeting.id}
-                meeting={meeting}
-                openCount={items.filter((item) => item.status !== "done").length}
-                reviewCount={items.filter((item) => item.status !== "done" && needsReview(item)).length}
-              />
+              <StaggerItem key={meeting.id}>
+                <MeetingRow
+                  meeting={meeting}
+                  openCount={items.filter((item) => item.status !== "done").length}
+                  reviewCount={items.filter((item) => item.status !== "done" && needsReview(item)).length}
+                />
+              </StaggerItem>
             );
           })}
-        </div>
+        </Stagger>
       )}
     </div>
   );
