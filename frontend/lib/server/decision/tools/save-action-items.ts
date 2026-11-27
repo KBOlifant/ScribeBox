@@ -71,10 +71,11 @@ function groundItem(item: ItemInput, transcript: string, normalizedTranscript: s
   if (actionDate && !textStatesDate(item.quote, actionDate)) {
     actionDate = null;
     dueNote = phrase
-      ? `The transcript only gives a relative date: "${phrase}".`
+      ? `The transcript doesn't give a full date: "${phrase}".`
       : "The quoted line doesn't state a date.";
   } else if (!actionDate && phrase) {
-    dueNote = `The transcript only gives a relative date: "${phrase}".`;
+    // Relative ("next week") or missing a year ("15 March"), so a person picks the exact date
+    dueNote = `The transcript doesn't give a full date: "${phrase}".`;
   }
 
   return {
