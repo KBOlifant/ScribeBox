@@ -1,4 +1,4 @@
-import { canStartNewRun, isUniqueViolation, type AnalysisStateName } from "@/lib/server/analysis";
+import { canStartNewRun, failStaleRun, isUniqueViolation, type AnalysisStateName } from "@/lib/server/analysis";
 import { getUser } from "@/lib/server/auth";
 import { BodyReader, getOptionalBody } from "@/lib/server/body";
 import { query } from "@/lib/server/db";
@@ -36,6 +36,8 @@ export async function POST(request: Request, { params }: Params) {
     const modelName = body.text("modelName", 100, "Model name");
     body.done();
 
+    // A run left working by a server that stopped mid-run counts as failed, so it can be retried
+    await failStaleRun(id);
     const latest = await query<{ analysis_state: AnalysisStateName }>(
       `select analysis_state from summaries where meeting_id = $1 order by created_at desc, id desc limit 1`,
       [id],

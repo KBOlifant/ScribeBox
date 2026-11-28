@@ -25,8 +25,14 @@ export function poolConfig() {
     connectionString: url.toString(),
     ssl: { ca: ca, rejectUnauthorized: true },
     max: 5,
-    // Fail instead of waiting forever when the database is out of connections or a query is stuck
-    connectionTimeoutMillis: 30_000,
+    // Opening a connection to the hosted database takes over a second and sometimes stalls, so keep
+    // open connections for 5 minutes instead of pg's default 10 seconds, with TCP keep-alive so the
+    // network doesn't drop them while they wait
+    idleTimeoutMillis: 300_000,
+    keepAlive: true,
+    // A healthy connect takes about 1.5s. A stalled one never finishes, so give up after 5s and let
+    // query() retry instead of waiting 30s
+    connectionTimeoutMillis: 5_000,
     query_timeout: 60_000,
   };
 }

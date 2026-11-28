@@ -1,6 +1,6 @@
 import "server-only";
 
-import { ANALYSIS_STATE_SQL, SUMMARY_TEXT_SQL } from "./analysis";
+import { ANALYSIS_STATE_SQL, RUN_STATE_SQL, SUMMARY_TEXT_SQL } from "./analysis";
 import type { BodyReader } from "./body";
 import { query } from "./db";
 import { ApiError, checkId } from "./http";
@@ -11,7 +11,7 @@ export const MEETING_COLUMNS = `id, title, meeting_date::text as date, source_ki
   ${ANALYSIS_STATE_SQL}, ${SUMMARY_TEXT_SQL}, created_at, updated_at`;
 
 // Columns we send back for a meeting's analysis runs. Queries alias summaries as s
-export const SUMMARY_COLUMNS = `s.id, s.meeting_id, s.model_name, s.analysis_state, s.summary_text,
+export const SUMMARY_COLUMNS = `s.id, s.meeting_id, s.model_name, ${RUN_STATE_SQL}, s.summary_text,
   s.created_at, s.updated_at`;
 
 // Columns we send back for a decision. Queries alias decisions as d
