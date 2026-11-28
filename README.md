@@ -1,5 +1,5 @@
 # ScribeBox
-[Demon Video](https://drive.google.com/file/d/1jCERvYBEnWCKHGlEUUl01G3biypE6S4f/view?usp=sharing)
+[Demo Video](https://drive.google.com/file/d/1jCERvYBEnWCKHGlEUUl01G3biypE6S4f/view?usp=sharing)
 
 ScribeBox turns a meeting transcript into a summary, the decisions made, and action items with owners and due dates, each traced back to the line it came from. It never invents an owner or a date: anything the transcript doesn't state is flagged for review instead.
 
